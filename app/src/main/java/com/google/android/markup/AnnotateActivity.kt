@@ -161,7 +161,7 @@ class AnnotateActivity : AppCompatActivity() {
                 trashDrop.visibility = View.VISIBLE
                 val active = trashBounds().contains(x, y)
                 trashDrop.setBackgroundResource(
-                    if (active) R.drawable.trash_circle_active else R.drawable.trash_circle
+                    if (active) R.drawable.trash_pill_active else R.drawable.trash_pill
                 )
                 trashDrop.imageTintList = ColorStateList.valueOf(
                     if (active) trashOnPrimary else trashOnPrimaryContainer
