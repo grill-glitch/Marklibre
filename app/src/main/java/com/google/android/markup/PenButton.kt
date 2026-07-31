@@ -10,9 +10,10 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 
 /**
- * Toolbar button for pen/highlighter: the icon stays in the neutral theme
- * color; the ACTIVE state is shown by an outer highlight ring around the
- * button, so the current ink color never makes the tool invisible.
+ * Toolbar button for pen/highlighter. Active state: the whole button is
+ * filled with colorPrimaryContainer and the icon switches to
+ * colorOnPrimaryContainer (the MD3 foreground for that fill); inactive:
+ * transparent selectable background, icon in neutral colorOnSurface.
  */
 class PenButton @JvmOverloads constructor(
     context: Context,
@@ -21,13 +22,13 @@ class PenButton @JvmOverloads constructor(
 
     var neutralColor: Int = Color.BLACK
 
+    var onContainerColor: Int = Color.WHITE
+
     var active: Boolean = false
         set(value) {
             field = value
-            updateBackground()
+            refresh()
         }
-
-    var activeColor: Int = Color.BLACK
 
     private var defaultBackground: Drawable? = null
 
@@ -36,19 +37,18 @@ class PenButton @JvmOverloads constructor(
         neutralColor = a.getColor(R.styleable.PenButton_neutral_color, Color.BLACK)
         a.recycle()
         scaleType = ScaleType.CENTER_INSIDE
-        updateTint()
+        refresh()
     }
 
-    private fun updateTint() {
-        imageTintList = ColorStateList.valueOf(neutralColor)
-    }
-
-    private fun updateBackground() {
+    private fun refresh() {
         background = if (active) {
             ContextCompat.getDrawable(context, R.drawable.tool_button_highlight)
         } else {
             defaultBackground ?: defaultSelectableBg()
         }
+        imageTintList = ColorStateList.valueOf(
+            if (active) onContainerColor else neutralColor
+        )
     }
 
     private fun defaultSelectableBg(): Drawable? {

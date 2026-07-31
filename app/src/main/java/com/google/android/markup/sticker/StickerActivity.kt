@@ -40,14 +40,18 @@ class StickerActivity : AppCompatActivity() {
         )
         val defaultBg = pen.background
         val neutral = themeColor(com.google.android.material.R.attr.colorOnSurface)
+        val onContainer = themeColor(com.google.android.material.R.attr.colorOnPrimaryContainer)
 
         fun highlight(active: ImageButton) {
-            pen.imageTintList = android.content.res.ColorStateList.valueOf(neutral)
-            highlighter.imageTintList = android.content.res.ColorStateList.valueOf(neutral)
-            eraser.imageTintList = android.content.res.ColorStateList.valueOf(neutral)
-            pen.background = if (active === pen) ring else defaultBg
-            highlighter.background = if (active === highlighter) ring else defaultBg
-            eraser.background = if (active === eraser) ring else defaultBg
+            fun apply(btn: ImageButton) {
+                btn.background = if (active === btn) ring else defaultBg
+                btn.imageTintList = android.content.res.ColorStateList.valueOf(
+                    if (active === btn) onContainer else neutral
+                )
+            }
+            apply(pen)
+            apply(highlighter)
+            apply(eraser)
         }
 
         pen.setOnClickListener { canvas.tool = InkTool.PEN; highlight(pen) }

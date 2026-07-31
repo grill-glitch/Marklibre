@@ -1,5 +1,6 @@
 package com.google.android.markup
 
+import android.content.res.ColorStateList
 import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -28,6 +29,8 @@ class ToolbarFragment : Fragment() {
 
     private var highlightBg: Drawable? = null
     private var defaultToolBg: Drawable? = null
+    private var onSurface = 0
+    private var onContainer = 0
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -48,6 +51,11 @@ class ToolbarFragment : Fragment() {
 
         highlightBg = ContextCompat.getDrawable(requireContext(), R.drawable.tool_button_highlight)
         defaultToolBg = cropButton.background
+        val ctx = requireContext()
+        onSurface = ctx.themeColor(com.google.android.material.R.attr.colorOnSurface)
+        onContainer = ctx.themeColor(com.google.android.material.R.attr.colorOnPrimaryContainer)
+        penButton.onContainerColor = onContainer
+        highlighterButton.onContainerColor = onContainer
 
         colorButtons = colorPanelChildren()
 
@@ -60,6 +68,7 @@ class ToolbarFragment : Fragment() {
         for (cb in colorButtons) {
             cb.setOnClickListener { callbacks?.onColorSelected(cb.color) }
         }
+        setActiveTool(InkTool.PEN)
     }
 
     private fun colorPanelChildren(): List<ColorButton> {
@@ -73,11 +82,18 @@ class ToolbarFragment : Fragment() {
     }
 
     fun setActiveTool(tool: InkTool) {
-        cropButton.background = if (tool == InkTool.CROP) highlightBg else defaultToolBg
-        textButton.background = if (tool == InkTool.TEXT) highlightBg else defaultToolBg
-        eraserButton.background = if (tool == InkTool.ERASER) highlightBg else defaultToolBg
+        applyButtonState(cropButton, tool == InkTool.CROP)
+        applyButtonState(textButton, tool == InkTool.TEXT)
+        applyButtonState(eraserButton, tool == InkTool.ERASER)
         penButton.active = tool == InkTool.PEN
         highlighterButton.active = tool == InkTool.HIGHLIGHTER
+    }
+
+    private fun applyButtonState(button: ImageButton, active: Boolean) {
+        button.background = if (active) highlightBg else defaultToolBg
+        button.imageTintList = ColorStateList.valueOf(
+            if (active) onContainer else onSurface
+        )
     }
 
     fun setColorPanelVisible(visible: Boolean) {
@@ -88,7 +104,5 @@ class ToolbarFragment : Fragment() {
         for (cb in colorButtons) {
             cb.checked = cb.color == color
         }
-        penButton.activeColor = color
-        highlighterButton.activeColor = color
     }
 }
