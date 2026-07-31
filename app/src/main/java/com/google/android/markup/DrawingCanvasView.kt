@@ -7,13 +7,15 @@ import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.PointF
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
-import android.os.SystemClock
 import android.util.AttributeSet
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
@@ -74,10 +76,21 @@ class DrawingCanvasView @JvmOverloads constructor(
     private var lastFocusX = 0f
     private var lastFocusY = 0f
 
-    // Double-tap detection
-    private var lastTapTime = 0L
-    private var lastTapX = 0f
-    private var lastTapY = 0f
+    // Single-finger corner resize of the selection box
+    private var resizeCorner: Int? = null
+    private var resizeOpposite = PointF()
+    private var resizeSize0 = 0f
+    private var resizeDist0 = 0f
+    private var resizeGrabX = 0f
+    private var resizeGrabY = 0f
+
+    // Tap detection (down position to tell tap from drag)
+    private var downX = 0f
+    private var downY = 0f
+
+    private val touchSlop: Float by lazy {
+        ViewConfiguration.get(context).scaledTouchSlop.toFloat()
+    }
 
     private val density: Float
         get() = resources.displayMetrics.density
@@ -390,27 +403,15 @@ class DrawingCanvasView @JvmOverloads constructor(
     private fun handleDrawTool(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                val sel = selectedText
-                if (sel != null && textBounds(sel).contains(event.x, event.y)) {
-                    draggingText = true
-                    dragOffX = event.x - sel.x
-                    dragOffY = event.y - sel.y
-                    return true
-                }
-                val hit = hitTestText(event.x, event.y)
-                if (hit != null) {
-                    if (isDoubleTap(event.x, event.y)) {
-                        listener?.onRequestTextEdit(hit)
-                    } else {
-                        selectText(hit)
-                    }
-                    return true
-                }
-                selectedText = null
-                invalidate()
+                // text interactions win over drawing when they hit
+                if (textDown(event.x, event.y)) return true
                 startStroke(event)
             }
             MotionEvent.ACTION_MOVE -> {
+                if (resizeCorner != null) {
+                    resizeSelectedText(event.x, event.y)
+                    return true
+                }
                 if (draggingText) {
                     moveSelectedText(event.x, event.y)
                     return true
@@ -432,33 +433,171 @@ class DrawingCanvasView @JvmOverloads constructor(
                     lastFocusY = fy
                 }
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (draggingText) {
-                    draggingText = false
-                    return true
-                }
-                if (scalingText) {
-                    scalingText = false
-                    return true
-                }
+            MotionEvent.ACTION_UP -> {
+                if (finishTextGesture(event.x, event.y)) return true
                 endStroke()
-                recordTap(event.x, event.y)
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                draggingText = false
+                scalingText = false
+                resizeCorner = null
             }
         }
         return true
     }
 
     private fun handleTextTool(event: MotionEvent): Boolean {
-        if (event.actionMasked == MotionEvent.ACTION_UP) {
-            val hit = hitTestText(event.x, event.y)
-            if (hit != null) {
-                selectText(hit)
-                listener?.onRequestTextEdit(hit)
-            } else {
-                listener?.onRequestNewText(event.x, event.y)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                if (textDown(event.x, event.y)) return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (resizeCorner != null) {
+                    resizeSelectedText(event.x, event.y)
+                    return true
+                }
+                if (draggingText) {
+                    moveSelectedText(event.x, event.y)
+                    return true
+                }
+            }
+            MotionEvent.ACTION_UP -> {
+                if (finishTextGesture(event.x, event.y)) return true
+                val hit = hitTestText(event.x, event.y)
+                if (hit == null) {
+                    listener?.onRequestNewText(event.x, event.y)
+                }
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                draggingText = false
+                resizeCorner = null
             }
         }
         return true
+    }
+
+    /** Ends a text drag/resize gesture; returns true when it consumed the up. */
+    private fun finishTextGesture(x: Float, y: Float): Boolean {
+        if (draggingText) {
+            val wasTap = hypot(x - downX, y - downY) <= touchSlop
+            draggingText = false
+            if (wasTap) {
+                // tap on the selected text -> open the editor (content + color)
+                selectedText?.let { listener?.onRequestTextEdit(it) }
+            }
+            return true
+        }
+        if (scalingText) {
+            scalingText = false
+            return true
+        }
+        if (resizeCorner != null) {
+            resizeCorner = null
+            return true
+        }
+        return false
+    }
+
+    /**
+     * Shared text-gesture entry. Returns true when the event was consumed by a
+     * text interaction (select, drag, corner resize).
+     */
+    private fun textDown(x: Float, y: Float): Boolean {
+        downX = x
+        downY = y
+        val sel = selectedText
+        if (sel != null) {
+            cornerAt(x, y, sel)?.let { corner ->
+                startCornerResize(sel, corner, x, y)
+                return true
+            }
+            if (textBounds(sel).contains(x, y)) {
+                // drag moves the selected text; a tap edits it (see UP)
+                draggingText = true
+                dragOffX = x - sel.x
+                dragOffY = y - sel.y
+                return true
+            }
+        }
+        val hit = hitTestText(x, y)
+        if (hit != null) {
+            // single tap selects and shows the box
+            selectText(hit)
+            return true
+        }
+        selectedText = null
+        invalidate()
+        return false
+    }
+
+    private fun cornerAt(x: Float, y: Float, el: InkElement.Text): Int? {
+        val p = textPaint(el.color, el.font, el.size)
+        val w = p.measureText(el.text)
+        val h = p.descent() - p.ascent()
+        val pad = 6f * density
+        val corners = listOf(
+            el.x - pad to el.y - pad,
+            el.x + w + pad to el.y - pad,
+            el.x - pad to el.y + h + pad,
+            el.x + w + pad to el.y + h + pad
+        )
+        val tol = 26f * density
+        for ((i, c) in corners.withIndex()) {
+            if (hypot(x - c.first, y - c.second) <= tol) return i
+        }
+        return null
+    }
+
+    private fun startCornerResize(el: InkElement.Text, corner: Int, x: Float, y: Float) {
+        val p = textPaint(el.color, el.font, el.size)
+        val w = p.measureText(el.text)
+        val h = p.descent() - p.ascent()
+        val pad = 6f * density
+        val corners = listOf(
+            PointF(el.x - pad, el.y - pad),
+            PointF(el.x + w + pad, el.y - pad),
+            PointF(el.x - pad, el.y + h + pad),
+            PointF(el.x + w + pad, el.y + h + pad)
+        )
+        val c = corners[corner]
+        // opposite corner stays fixed while scaling
+        resizeOpposite = when (corner) {
+            0 -> PointF(corners[3].x, corners[3].y)
+            1 -> PointF(corners[2].x, corners[2].y)
+            2 -> PointF(corners[1].x, corners[1].y)
+            else -> PointF(corners[0].x, corners[0].y)
+        }
+        resizeSize0 = el.size
+        resizeDist0 = hypot(c.x - resizeOpposite.x, c.y - resizeOpposite.y)
+        resizeGrabX = x - c.x
+        resizeGrabY = y - c.y
+        resizeCorner = corner
+        performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+    }
+
+    private fun resizeSelectedText(x: Float, y: Float) {
+        val el = selectedText ?: return
+        val corner = resizeCorner ?: return
+        val newX = x - resizeGrabX
+        val newY = y - resizeGrabY
+        val ratio = hypot(newX - resizeOpposite.x, newY - resizeOpposite.y) / resizeDist0
+        if (ratio <= 0.05f) return
+        val size = (resizeSize0 * ratio).coerceIn(10f * density, 200f * density)
+        el.size = size
+        val p = textPaint(el.color, el.font, size)
+        val w = p.measureText(el.text)
+        val h = p.descent() - p.ascent()
+        val pad = 6f * density
+        val wBox = w + 2 * pad
+        val hBox = h + 2 * pad
+        // anchor on the OPPOSITE corner: it must not move while scaling
+        when (corner) {
+            0 -> { el.x = resizeOpposite.x - wBox + pad; el.y = resizeOpposite.y - hBox + pad }
+            1 -> { el.x = resizeOpposite.x + pad; el.y = resizeOpposite.y - hBox + pad }
+            2 -> { el.x = resizeOpposite.x - wBox + pad; el.y = resizeOpposite.y + pad }
+            else -> { el.x = resizeOpposite.x + pad; el.y = resizeOpposite.y + pad }
+        }
+        renderInk()
     }
 
     private fun hitTestText(x: Float, y: Float): InkElement.Text? {
@@ -507,18 +646,6 @@ class DrawingCanvasView @JvmOverloads constructor(
     private fun pointerFocus(e: MotionEvent): Pair<Float, Float> {
         if (e.pointerCount < 2) return e.x to e.y
         return ((e.getX(0) + e.getX(1)) / 2f) to ((e.getY(0) + e.getY(1)) / 2f)
-    }
-
-    private fun recordTap(x: Float, y: Float) {
-        lastTapTime = SystemClock.uptimeMillis()
-        lastTapX = x
-        lastTapY = y
-    }
-
-    private fun isDoubleTap(x: Float, y: Float): Boolean {
-        val dt = SystemClock.uptimeMillis() - lastTapTime
-        val dist = hypot(x - lastTapX, y - lastTapY)
-        return dt < 350 && dist < 60f * density
     }
 
     private fun startStroke(event: MotionEvent) {
