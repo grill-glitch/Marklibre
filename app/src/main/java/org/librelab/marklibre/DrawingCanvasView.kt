@@ -229,10 +229,16 @@ class DrawingCanvasView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         source?.let { canvas.drawBitmap(it, matrix, null) }
-        inkLayer?.let { canvas.drawBitmap(it, 0f, 0f, null) }
-        activePath?.let {
-            canvas.drawPath(it, strokePaint(activeStyle, activeColor, activeWidth))
+        // Composite the in-progress stroke onto the ink layer so the eraser
+        // preview only clears ink - never the image below (a CLEAR path drawn
+        // on the main canvas would punch a transparent hole through the image,
+        // exposing the dark parent background as a black streak).
+        val path = activePath
+        val layer = inkLayer
+        if (path != null && layer != null) {
+            Canvas(layer).drawPath(path, strokePaint(activeStyle, activeColor, activeWidth))
         }
+        inkLayer?.let { canvas.drawBitmap(it, 0f, 0f, null) }
         selectedText?.let { drawSelection(canvas, it) }
     }
 
