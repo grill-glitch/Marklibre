@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/icon.png" width="96" alt="Marklibre icon" />
+</p>
+
 # Marklibre
 
 An open-source, dependency-free reimplementation of **Google Markup**
@@ -10,6 +14,12 @@ ink engine is a hand-drawn Canvas implementation.
 > based on the *observable behavior* of the original app. It is not affiliated
 > with or endorsed by Google. "Markup" and "Google" are trademarks of their
 > respective owners.
+
+## Screenshot
+
+<img src="docs/screenshot.png" width="320" alt="Marklibre editing a screenshot" />
+
+*Editing a screenshot on a Redmi K40 (alioth), pen tool active.*
 
 ## Features
 
@@ -24,8 +34,8 @@ ink engine is a hand-drawn Canvas implementation.
 - **Save / Share / Copy / Delete** — full-resolution PNG export via FileProvider
 - **Sticker editor** — draw on a transparent canvas, save as a sticker PNG
   (mirrors the original `StickerActivity` flow)
-- **Drop-in for custom ROMs** — same package name, versionCode and
-  `ACTION_EDIT image/*` entry point as the original, so SystemUI screenshot
+- **Drop-in for custom ROMs** — mirrors the original's versionCode and
+  `ACTION_EDIT image/*` entry point, so SystemUI screenshot
   "edit" integration works out of the box
 
 ## Tech stack
