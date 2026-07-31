@@ -499,16 +499,15 @@ class DrawingCanvasView @JvmOverloads constructor(
         if (draggingText) {
             val wasTap = hypot(x - downX, y - downY) <= touchSlop
             draggingText = false
-            listener?.onTextDragChanged(false, x, y)
             if (!wasTap && listener?.onTextDropTargetContains(x, y) == true) {
                 // dropped on the trash -> delete the text
                 deleteDraggedText()
-                return true
-            }
-            if (wasTap) {
+            } else if (wasTap) {
                 // tap on the selected text -> open the editor (content + color)
                 selectedText?.let { listener?.onRequestTextEdit(it) }
             }
+            // hide the trash AFTER the drop check (it gates on its own bounds)
+            listener?.onTextDragChanged(false, x, y)
             return true
         }
         if (scalingText) {

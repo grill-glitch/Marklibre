@@ -169,7 +169,7 @@ class AnnotateActivity : AppCompatActivity() {
             }
 
             override fun onTextDropTargetContains(x: Float, y: Float): Boolean =
-                trashDrop.visibility == View.VISIBLE && trashBounds().contains(x, y)
+                trashBounds().contains(x, y)
         }
         toolbarFragment.setActiveTool(InkTool.PEN)
         toolbarFragment.setSelectedColor(canvas.color)
