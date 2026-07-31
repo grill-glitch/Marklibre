@@ -173,6 +173,7 @@ class AnnotateActivity : AppCompatActivity() {
         canvas.tool = InkTool.CROP
         val r = canvas.sourceRectInView()
         if (r == null) return
+        cropOverlay.setClampRect(r)
         cropOverlay.setInitialRect(r)
         cropOverlay.visibility = View.VISIBLE
         cropActions.visibility = View.VISIBLE

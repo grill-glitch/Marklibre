@@ -24,6 +24,10 @@ class CropOverlayView @JvmOverloads constructor(
     var rect = RectF()
         private set
 
+    /** Image bounds in view coordinates - the crop rect may never leave it. */
+    var clampBounds = RectF()
+        private set
+
     var onRectChange: ((RectF) -> Unit)? = null
 
     private val density: Float
@@ -45,10 +49,37 @@ class CropOverlayView @JvmOverloads constructor(
 
     private enum class Mode { NONE, MOVE, LEFT, RIGHT, TOP, BOTTOM, TL, TR, BL, BR }
 
-    fun setInitialRect(r: RectF) {
-        rect.set(r)
+    fun setClampRect(r: RectF) {
+        clampBounds.set(r)
         invalidate()
     }
+
+    fun setInitialRect(r: RectF) {
+        rect.set(r)
+        clampToBounds()
+        invalidate()
+    }
+
+    private fun clampToBounds() {
+        val l = clampL()
+        val t = clampT()
+        val r = clampR()
+        val b = clampB()
+        if (r <= l || b <= t) return
+        rect.left = safeClamp(rect.left, l, r)
+        rect.top = safeClamp(rect.top, t, b)
+        rect.right = safeClamp(rect.right, l, r)
+        rect.bottom = safeClamp(rect.bottom, t, b)
+    }
+
+    /** maxOf/minOf clamping - never throws on empty ranges (unlike coerceIn). */
+    private fun safeClamp(v: Float, lo: Float, hi: Float): Float =
+        maxOf(lo, minOf(v, hi))
+
+    private fun clampL() = if (clampBounds.isEmpty) 0f else clampBounds.left
+    private fun clampT() = if (clampBounds.isEmpty) 0f else clampBounds.top
+    private fun clampR() = if (clampBounds.isEmpty) width.toFloat() else clampBounds.right
+    private fun clampB() = if (clampBounds.isEmpty) height.toFloat() else clampBounds.bottom
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -121,41 +152,37 @@ class CropOverlayView @JvmOverloads constructor(
         val minSize = 60f * density
         when (mode) {
             Mode.MOVE -> {
-                val nx = (rect.left + dx).coerceIn(0f, width - rect.width())
-                val ny = (rect.top + dy).coerceIn(0f, height - rect.height())
+                val nx = safeClamp(rect.left + dx, clampL(), clampR() - rect.width())
+                val ny = safeClamp(rect.top + dy, clampT(), clampB() - rect.height())
                 rect.offset(nx - rect.left, ny - rect.top)
             }
             Mode.LEFT -> {
-                val nl = (rect.left + dx).coerceIn(0f, rect.right - minSize)
-                rect.left = nl
+                rect.left = safeClamp(rect.left + dx, clampL(), rect.right - minSize)
             }
             Mode.RIGHT -> {
-                val nr = (rect.right + dx).coerceIn(rect.left + minSize, width.toFloat())
-                rect.right = nr
+                rect.right = safeClamp(rect.right + dx, rect.left + minSize, clampR())
             }
             Mode.TOP -> {
-                val nt = (rect.top + dy).coerceIn(0f, rect.bottom - minSize)
-                rect.top = nt
+                rect.top = safeClamp(rect.top + dy, clampT(), rect.bottom - minSize)
             }
             Mode.BOTTOM -> {
-                val nb = (rect.bottom + dy).coerceIn(rect.top + minSize, height.toFloat())
-                rect.bottom = nb
+                rect.bottom = safeClamp(rect.bottom + dy, rect.top + minSize, clampB())
             }
             Mode.TL -> {
-                rect.left = (rect.left + dx).coerceIn(0f, rect.right - minSize)
-                rect.top = (rect.top + dy).coerceIn(0f, rect.bottom - minSize)
+                rect.left = safeClamp(rect.left + dx, clampL(), rect.right - minSize)
+                rect.top = safeClamp(rect.top + dy, clampT(), rect.bottom - minSize)
             }
             Mode.TR -> {
-                rect.right = (rect.right + dx).coerceIn(rect.left + minSize, width.toFloat())
-                rect.top = (rect.top + dy).coerceIn(0f, rect.bottom - minSize)
+                rect.right = safeClamp(rect.right + dx, rect.left + minSize, clampR())
+                rect.top = safeClamp(rect.top + dy, clampT(), rect.bottom - minSize)
             }
             Mode.BL -> {
-                rect.left = (rect.left + dx).coerceIn(0f, rect.right - minSize)
-                rect.bottom = (rect.bottom + dy).coerceIn(rect.top + minSize, height.toFloat())
+                rect.left = safeClamp(rect.left + dx, clampL(), rect.right - minSize)
+                rect.bottom = safeClamp(rect.bottom + dy, rect.top + minSize, clampB())
             }
             Mode.BR -> {
-                rect.right = (rect.right + dx).coerceIn(rect.left + minSize, width.toFloat())
-                rect.bottom = (rect.bottom + dy).coerceIn(rect.top + minSize, height.toFloat())
+                rect.right = safeClamp(rect.right + dx, rect.left + minSize, clampR())
+                rect.bottom = safeClamp(rect.bottom + dy, rect.top + minSize, clampB())
             }
             Mode.NONE -> {}
         }
