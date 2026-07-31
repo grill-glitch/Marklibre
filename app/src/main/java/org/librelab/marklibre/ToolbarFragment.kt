@@ -140,7 +140,7 @@ class ToolbarFragment : Fragment() {
         }
         (btn as? ImageButton)?.imageTintList = ColorStateList.valueOf(from)
         iconTintAnim = ValueAnimator.ofObject(ArgbEvaluator(), from, to).apply {
-            duration = 220
+            duration = 120
             interpolator = DecelerateInterpolator(2f)
             addUpdateListener {
                 (btn as? ImageButton)?.imageTintList =
@@ -180,7 +180,7 @@ class ToolbarFragment : Fragment() {
         }
         hv.animate()
             .translationX(target)
-            .setDuration(220)
+            .setDuration(120)
             .setInterpolator(DecelerateInterpolator(2f))
             .withEndAction {
                 // only clear the dim if this button is still the target
