@@ -36,7 +36,7 @@
             android:tint="?attr/colorOnSurface"
             android:tooltipText="@string/ink_text" />
 
-        <com.google.android.markup.PenButton
+        <org.librelab.marklibre.PenButton
             android:id="@+id/ink_pen_button"
             style="@style/MarkupToolbarButton"
             android:layout_gravity="center"
@@ -45,7 +45,7 @@
             app:tool_name="@string/ink_pen"
             android:tooltipText="@string/ink_pen" />
 
-        <com.google.android.markup.PenButton
+        <org.librelab.marklibre.PenButton
             android:id="@+id/ink_highlighter_button"
             style="@style/MarkupToolbarButton"
             android:layout_gravity="center"

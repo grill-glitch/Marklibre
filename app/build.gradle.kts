@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = "com.google.android.markup"
+    namespace = "org.librelab.marklibre"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.google.android.markup"
+        applicationId = "org.librelab.marklibre"
         minSdk = 35
         targetSdk = 36
         versionCode = 232

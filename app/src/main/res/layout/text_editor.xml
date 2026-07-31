@@ -11,7 +11,7 @@
         android:background="@color/text_editor_scrim"
         android:orientation="vertical">
 
-        <com.google.android.markup.text.MarkupEditText
+        <org.librelab.marklibre.text.MarkupEditText
             android:id="@+id/text_input"
             android:layout_width="match_parent"
             android:layout_height="0dp"

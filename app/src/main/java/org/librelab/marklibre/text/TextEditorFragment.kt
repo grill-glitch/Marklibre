@@ -1,4 +1,4 @@
-package com.google.android.markup.text
+package org.librelab.marklibre.text
 
 import android.content.Context
 import android.os.Bundle
@@ -14,12 +14,12 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
-import com.google.android.markup.ColorButton
-import com.google.android.markup.FONT_NAMES
-import com.google.android.markup.InkElement
-import com.google.android.markup.R
-import com.google.android.markup.fontTypeface
-import com.google.android.markup.themeColor
+import org.librelab.marklibre.ColorButton
+import org.librelab.marklibre.FONT_NAMES
+import org.librelab.marklibre.InkElement
+import org.librelab.marklibre.R
+import org.librelab.marklibre.fontTypeface
+import org.librelab.marklibre.themeColor
 import kotlin.math.max
 
 class TextEditorFragment : Fragment() {

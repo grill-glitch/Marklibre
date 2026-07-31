@@ -2,9 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <permission
-        android:name="com.google.android.markup.remix.permission.SAVE_STICKER"
+        android:name="org.librelab.marklibre.remix.permission.SAVE_STICKER"
         android:protectionLevel="signature" />
-    <uses-permission android:name="com.google.android.markup.remix.permission.SAVE_STICKER" />
+    <uses-permission android:name="org.librelab.marklibre.remix.permission.SAVE_STICKER" />
 
     <queries>
         <package android:name="com.google.android.apps.pixel.creativeassistant" />
@@ -37,7 +37,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.google.android.markup"
+            android:authorities="org.librelab.marklibre"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

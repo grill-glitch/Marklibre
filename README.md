@@ -1,7 +1,7 @@
-# Markup-libre
+# Marklibre
 
 An open-source, dependency-free reimplementation of **Google Markup**
-(`com.google.android.markup`), the screenshot annotation editor shipped on
+(`org.librelab.marklibre`), the screenshot annotation editor shipped on
 Pixel / GMS devices. Built from scratch in Kotlin — no Google proprietary
 code, no closed-source SDKs, no native Ink/Sketchology engine.
 

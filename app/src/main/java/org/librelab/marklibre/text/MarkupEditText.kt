@@ -1,4 +1,4 @@
-package com.google.android.markup.text
+package org.librelab.marklibre.text
 
 import android.content.Context
 import android.util.AttributeSet

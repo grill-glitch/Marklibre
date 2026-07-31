@@ -1,4 +1,4 @@
-package com.google.android.markup
+package org.librelab.marklibre
 
 import android.app.Activity
 import android.content.ClipData
@@ -24,7 +24,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import com.google.android.material.button.MaterialButton
-import com.google.android.markup.text.TextEditorFragment
+import org.librelab.marklibre.text.TextEditorFragment
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -360,7 +360,7 @@ class AnnotateActivity : AppCompatActivity() {
                 val file = writePng(flat, "edited")
                 runOnUiThread {
                     progress.visibility = View.GONE
-                    val uri = FileProvider.getUriForFile(this, "com.google.android.markup", file)
+                    val uri = FileProvider.getUriForFile(this, "org.librelab.marklibre", file)
                     val send = Intent(Intent.ACTION_SEND).apply {
                         type = "image/png"
                         putExtra(Intent.EXTRA_STREAM, uri)

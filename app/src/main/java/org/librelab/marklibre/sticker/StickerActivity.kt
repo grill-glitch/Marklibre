@@ -1,4 +1,4 @@
-package com.google.android.markup.sticker
+package org.librelab.marklibre.sticker
 
 import android.app.Activity
 import android.content.Intent
@@ -9,11 +9,11 @@ import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
-import com.google.android.markup.ColorButton
-import com.google.android.markup.DrawingCanvasView
-import com.google.android.markup.InkTool
-import com.google.android.markup.R
-import com.google.android.markup.themeColor
+import org.librelab.marklibre.ColorButton
+import org.librelab.marklibre.DrawingCanvasView
+import org.librelab.marklibre.InkTool
+import org.librelab.marklibre.R
+import org.librelab.marklibre.themeColor
 import java.io.File
 import java.io.FileOutputStream
 
@@ -93,7 +93,7 @@ class StickerActivity : AppCompatActivity() {
                     bm.compress(Bitmap.CompressFormat.PNG, 100, out)
                 }
                 runOnUiThread {
-                    val uri = FileProvider.getUriForFile(this, "com.google.android.markup", file)
+                    val uri = FileProvider.getUriForFile(this, "org.librelab.marklibre", file)
                     Toast.makeText(this, R.string.sticker_saved, Toast.LENGTH_SHORT).show()
                     val result = Intent().apply {
                         data = uri

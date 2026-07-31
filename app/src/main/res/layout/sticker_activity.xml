@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="#00000000">
 
-    <com.google.android.markup.DrawingCanvasView
+    <org.librelab.marklibre.DrawingCanvasView
         android:id="@+id/sticker_canvas"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
@@ -54,13 +54,13 @@
             android:orientation="horizontal"
             android:padding="4dp">
 
-            <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_black" />
-            <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_red" />
-            <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_yellow" />
-            <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_green" />
-            <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_blue" />
-            <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_purple" />
-            <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_white" />
+            <org.librelab.marklibre.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_black" />
+            <org.librelab.marklibre.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_red" />
+            <org.librelab.marklibre.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_yellow" />
+            <org.librelab.marklibre.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_green" />
+            <org.librelab.marklibre.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_blue" />
+            <org.librelab.marklibre.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_purple" />
+            <org.librelab.marklibre.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_white" />
         </LinearLayout>
     </LinearLayout>
 
