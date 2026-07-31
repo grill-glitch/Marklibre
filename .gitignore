@@ -10,3 +10,5 @@ local.properties
 .cxx
 *.apk
 !app/src/main/**/*.apk
+keystore.properties
+marklibre-release.keystore
