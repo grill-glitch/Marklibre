@@ -155,10 +155,10 @@ class AnnotateActivity : AppCompatActivity() {
 
             override fun onTextDragChanged(dragging: Boolean, x: Float, y: Float) {
                 if (!dragging) {
-                    trashDrop.visibility = View.GONE
+                    hideTrash()
                     return
                 }
-                trashDrop.visibility = View.VISIBLE
+                if (trashDrop.visibility != View.VISIBLE) showTrash()
                 val active = trashBounds().contains(x, y)
                 trashDrop.setBackgroundResource(
                     if (active) R.drawable.trash_pill_active else R.drawable.trash_pill
@@ -198,6 +198,37 @@ class AnnotateActivity : AppCompatActivity() {
         val l = trashDrop.left.toFloat()
         val t = trashDrop.top.toFloat()
         return RectF(l, t, l + trashDrop.width, t + trashDrop.height)
+    }
+
+    private var trashShowing = false
+
+    /** Slides the trash up into place with a fade-in (once per drag). */
+    private fun showTrash() {
+        trashShowing = true
+        trashDrop.animate().cancel()
+        trashDrop.visibility = View.VISIBLE
+        trashDrop.alpha = 0f
+        trashDrop.translationY = 56f * resources.displayMetrics.density
+        trashDrop.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(160)
+            .start()
+    }
+
+    /** Slides the trash down and fades it out, then hides it. */
+    private fun hideTrash() {
+        if (!trashShowing) return
+        trashShowing = false
+        trashDrop.animate().cancel()
+        trashDrop.animate()
+            .alpha(0f)
+            .translationY(56f * resources.displayMetrics.density)
+            .setDuration(160)
+            .withEndAction {
+                if (!trashShowing) trashDrop.visibility = View.GONE
+            }
+            .start()
     }
 
     private fun setupCrop() {
