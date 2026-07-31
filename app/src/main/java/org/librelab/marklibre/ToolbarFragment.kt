@@ -1,10 +1,11 @@
 package org.librelab.marklibre
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.content.res.ColorStateList
 import android.graphics.drawable.Drawable
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -38,11 +39,7 @@ class ToolbarFragment : Fragment() {
     private var highlightReady = false
     private var onSurface = 0
     private var onPrimary = 0
-    private var primaryColor = 0
-    private var containerColor = 0
-    private var highlightGradient: GradientDrawable? = null
-    private var dimFadeAnim: ValueAnimator? = null
-    private var highlightColorAnim: ValueAnimator? = null
+    private var iconTintAnim: ValueAnimator? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -69,14 +66,6 @@ class ToolbarFragment : Fragment() {
         // highlighted tools mimic the Save button: colorPrimary fill +
         // colorOnPrimary icon (same as the Save button's text color)
         onPrimary = ctx.themeColor(com.google.android.material.R.attr.colorOnPrimary)
-        primaryColor = ctx.themeColor(android.R.attr.colorPrimary)
-        containerColor = ctx.themeColor(com.google.android.material.R.attr.colorPrimaryContainer)
-        // the bright highlight's fill is animated (container -> primary)
-        highlightGradient = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(primaryColor)
-        }
-        highlightView?.background = highlightGradient
 
         colorButtons = colorPanelChildren()
 
@@ -108,14 +97,15 @@ class ToolbarFragment : Fragment() {
     }
 
     fun setActiveTool(tool: InkTool) {
-        applyButtonState(cropButton, tool == InkTool.CROP)
-        applyButtonState(textButton, tool == InkTool.TEXT)
-        applyButtonState(eraserButton, tool == InkTool.ERASER)
+        // icon states revert instantly for every tool except the new one,
+        // whose icon fades to its active tint (see animateIconTint)
+        applyButtonState(cropButton, false)
+        applyButtonState(textButton, false)
+        applyButtonState(eraserButton, false)
+        penButton.showColor = false
+        highlighterButton.showColor = false
         penButton.active = tool == InkTool.PEN
         highlighterButton.active = tool == InkTool.HIGHLIGHTER
-        // only the highlighted brush itself shows the current ink color
-        penButton.showColor = tool == InkTool.PEN
-        highlighterButton.showColor = tool == InkTool.HIGHLIGHTER
 
         // tool-switch animation: the newly clicked tool gets a dim highlight
         // immediately, while the bright highlight slides over to it
@@ -123,20 +113,49 @@ class ToolbarFragment : Fragment() {
         dimmedButton?.background = defaultBg
         dimmedButton = newButton
         newButton.background = dimBg
-        fadeDimIn()
         positionHighlight(newButton, animate = highlightReady)
         highlightReady = true
+        // icon color gradient: the new tool's icon fades from its neutral
+        // tone to its active tint (onPrimary, or the ink color for brushes)
+        animateIconTint(newButton, tool)
     }
 
-    /** Fades the dim highlight in on the newly selected tool (alpha 0->1). */
-    private fun fadeDimIn() {
-        dimFadeAnim?.cancel()
-        val d = dimBg ?: return
-        d.alpha = 0
-        dimFadeAnim = ValueAnimator.ofInt(0, 255).apply {
-            duration = 160
+    private fun animateIconTint(btn: View, tool: InkTool) {
+        iconTintAnim?.cancel()
+        val from: Int
+        val to: Int
+        when (tool) {
+            InkTool.PEN -> {
+                from = penButton.neutralColor
+                to = penButton.activeColor
+            }
+            InkTool.HIGHLIGHTER -> {
+                from = highlighterButton.neutralColor
+                to = highlighterButton.activeColor
+            }
+            else -> {
+                from = onSurface
+                to = onPrimary
+            }
+        }
+        (btn as? ImageButton)?.imageTintList = ColorStateList.valueOf(from)
+        iconTintAnim = ValueAnimator.ofObject(ArgbEvaluator(), from, to).apply {
+            duration = 220
             interpolator = DecelerateInterpolator(2f)
-            addUpdateListener { d.alpha = it.animatedValue as Int }
+            addUpdateListener {
+                (btn as? ImageButton)?.imageTintList =
+                    ColorStateList.valueOf(it.animatedValue as Int)
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    // brushes: hand the tint over to the ink-color state
+                    when (tool) {
+                        InkTool.PEN -> penButton.showColor = true
+                        InkTool.HIGHLIGHTER -> highlighterButton.showColor = true
+                        else -> {}
+                    }
+                }
+            })
             start()
         }
     }
@@ -155,7 +174,6 @@ class ToolbarFragment : Fragment() {
         if (!animate) {
             hv.animate().cancel()
             hv.translationX = target
-            highlightGradient?.setColor(primaryColor)
             // the bright highlight is home: clear the dim underneath
             dimmedButton?.background = defaultBg
             return
@@ -169,17 +187,6 @@ class ToolbarFragment : Fragment() {
                 if (dimmedButton === btn) dimmedButton?.background = defaultBg
             }
             .start()
-        // color gradient: the traveling highlight fades from the dim
-        // container tone to the full primary as it reaches the new tool
-        highlightColorAnim?.cancel()
-        highlightColorAnim = ValueAnimator.ofObject(ArgbEvaluator(), containerColor, primaryColor).apply {
-            duration = 220
-            interpolator = DecelerateInterpolator(2f)
-            addUpdateListener {
-                highlightGradient?.setColor(it.animatedValue as Int)
-            }
-            start()
-        }
     }
 
     private fun applyButtonState(button: ImageButton, active: Boolean) {
