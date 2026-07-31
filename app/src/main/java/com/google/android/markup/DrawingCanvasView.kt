@@ -274,7 +274,7 @@ class DrawingCanvasView @JvmOverloads constructor(
         linePaint: Paint
     ) {
         val lineLen = 24f * density
-        val dotR = 7f * density
+        val dotR = 9f * density
         val x = box.centerX()
         val y0 = box.bottom
         val y1 = y0 + lineLen
