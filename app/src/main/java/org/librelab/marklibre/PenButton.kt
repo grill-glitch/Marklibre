@@ -3,16 +3,14 @@ package org.librelab.marklibre
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.graphics.drawable.Drawable
 import android.util.AttributeSet
-import android.util.TypedValue
 import androidx.appcompat.widget.AppCompatImageButton
-import androidx.core.content.ContextCompat
 
 /**
- * Toolbar button for pen/highlighter.
- * - active: whole button filled with colorPrimaryContainer
- * - showColor (any color tool active): icon tinted with the current ink color
+ * Toolbar button for pen/highlighter. Its BACKGROUND is managed by the
+ * toolbar (dim highlight when newly selected, bright moving highlight
+ * underneath); this view only controls the icon tint:
+ * - showColor (this brush is active): icon shows the current ink color
  * - otherwise: icon in neutral colorOnSurface
  */
 class PenButton @JvmOverloads constructor(
@@ -40,8 +38,6 @@ class PenButton @JvmOverloads constructor(
             refresh()
         }
 
-    private var defaultBackground: Drawable? = null
-
     init {
         val a = context.obtainStyledAttributes(attrs, R.styleable.PenButton)
         neutralColor = a.getColor(R.styleable.PenButton_neutral_color, Color.BLACK)
@@ -51,25 +47,8 @@ class PenButton @JvmOverloads constructor(
     }
 
     private fun refresh() {
-        background = if (active) {
-            ContextCompat.getDrawable(context, R.drawable.tool_button_highlight)
-        } else {
-            defaultBackground ?: defaultSelectableBg()
-        }
         imageTintList = ColorStateList.valueOf(
             if (showColor) activeColor else neutralColor
         )
-    }
-
-    private fun defaultSelectableBg(): Drawable? {
-        val tv = TypedValue()
-        return if (context.theme.resolveAttribute(
-                android.R.attr.selectableItemBackgroundBorderless, tv, true
-            )
-        ) {
-            context.getDrawable(tv.resourceId).also { defaultBackground = it }
-        } else {
-            null
-        }
     }
 }

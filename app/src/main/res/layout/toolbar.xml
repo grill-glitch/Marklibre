@@ -11,55 +11,72 @@
 
     <include layout="@layout/color_panel" />
 
-    <LinearLayout
-        android:id="@+id/tool_group"
+    <FrameLayout
+        android:id="@+id/tool_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@drawable/toolbar_sheet"
-        android:gravity="center_horizontal"
-        android:orientation="horizontal"
         android:paddingHorizontal="8dp">
 
-        <ImageButton
-            android:id="@+id/crop_button"
-            style="@style/MarkupToolbarButton"
-            android:contentDescription="@string/crop"
-            android:src="@drawable/ic_crop"
-            android:tint="?attr/colorOnSurface"
-            android:tooltipText="@string/crop" />
+        <!-- Moving bright highlight: slides (non-linear) from the old tool
+             to the newly selected one; sits under the button icons. -->
+        <View
+            android:id="@+id/tool_highlight"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="left|center_vertical"
+            android:background="@drawable/tool_button_highlight"
+            android:importantForAccessibility="no"
+            android:visibility="invisible" />
 
-        <ImageButton
-            android:id="@+id/ink_text_button"
-            style="@style/MarkupToolbarButton"
-            android:contentDescription="@string/ink_text"
-            android:src="@drawable/ic_text"
-            android:tint="?attr/colorOnSurface"
-            android:tooltipText="@string/ink_text" />
+        <LinearLayout
+            android:id="@+id/tool_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="horizontal">
 
-        <org.librelab.marklibre.PenButton
-            android:id="@+id/ink_pen_button"
-            style="@style/MarkupToolbarButton"
-            android:layout_gravity="center"
-            android:contentDescription="@string/ink_pen"
-            app:neutral_color="?attr/colorOnSurface"
-            app:tool_name="@string/ink_pen"
-            android:tooltipText="@string/ink_pen" />
+            <ImageButton
+                android:id="@+id/crop_button"
+                style="@style/MarkupToolbarButton"
+                android:contentDescription="@string/crop"
+                android:src="@drawable/ic_crop"
+                android:tint="?attr/colorOnSurface"
+                android:tooltipText="@string/crop" />
 
-        <org.librelab.marklibre.PenButton
-            android:id="@+id/ink_highlighter_button"
-            style="@style/MarkupToolbarButton"
-            android:layout_gravity="center"
-            android:contentDescription="@string/ink_highlighter"
-            app:neutral_color="?attr/colorOnSurface"
-            app:tool_name="@string/ink_highlighter"
-            android:tooltipText="@string/ink_highlighter" />
+            <ImageButton
+                android:id="@+id/ink_text_button"
+                style="@style/MarkupToolbarButton"
+                android:contentDescription="@string/ink_text"
+                android:src="@drawable/ic_text"
+                android:tint="?attr/colorOnSurface"
+                android:tooltipText="@string/ink_text" />
 
-        <ImageButton
-            android:id="@+id/ink_eraser_button"
-            style="@style/MarkupToolbarButton"
-            android:contentDescription="@string/ink_eraser"
-            android:src="@drawable/ic_eraser"
-            android:tint="?attr/colorOnSurface"
-            android:tooltipText="@string/ink_eraser" />
-    </LinearLayout>
+            <org.librelab.marklibre.PenButton
+                android:id="@+id/ink_pen_button"
+                style="@style/MarkupToolbarButton"
+                android:layout_gravity="center"
+                android:contentDescription="@string/ink_pen"
+                app:neutral_color="?attr/colorOnSurface"
+                app:tool_name="@string/ink_pen"
+                android:tooltipText="@string/ink_pen" />
+
+            <org.librelab.marklibre.PenButton
+                android:id="@+id/ink_highlighter_button"
+                style="@style/MarkupToolbarButton"
+                android:layout_gravity="center"
+                android:contentDescription="@string/ink_highlighter"
+                app:neutral_color="?attr/colorOnSurface"
+                app:tool_name="@string/ink_highlighter"
+                android:tooltipText="@string/ink_highlighter" />
+
+            <ImageButton
+                android:id="@+id/ink_eraser_button"
+                style="@style/MarkupToolbarButton"
+                android:contentDescription="@string/ink_eraser"
+                android:src="@drawable/ic_eraser"
+                android:tint="?attr/colorOnSurface"
+                android:tooltipText="@string/ink_eraser" />
+        </LinearLayout>
+    </FrameLayout>
 </LinearLayout>

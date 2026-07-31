@@ -1,5 +1,6 @@
 package org.librelab.marklibre
 
+import android.view.animation.DecelerateInterpolator
 import android.content.res.ColorStateList
 import android.graphics.drawable.Drawable
 import android.os.Bundle
@@ -27,8 +28,11 @@ class ToolbarFragment : Fragment() {
     private lateinit var highlighterButton: PenButton
     private lateinit var colorButtons: List<ColorButton>
 
-    private var highlightBg: Drawable? = null
-    private var defaultToolBg: Drawable? = null
+    private var highlightView: View? = null
+    private var dimBg: Drawable? = null
+    private var defaultBg: Drawable? = null
+    private var dimmedButton: View? = null
+    private var highlightReady = false
     private var onSurface = 0
     private var onPrimary = 0
 
@@ -49,8 +53,9 @@ class ToolbarFragment : Fragment() {
         penButton.setImageResource(R.drawable.ic_pen)
         highlighterButton.setImageResource(R.drawable.ic_highlighter)
 
-        highlightBg = ContextCompat.getDrawable(requireContext(), R.drawable.tool_button_highlight)
-        defaultToolBg = cropButton.background
+        highlightView = view.findViewById(R.id.tool_highlight)
+        dimBg = ContextCompat.getDrawable(requireContext(), R.drawable.tool_button_highlight_dim)
+        defaultBg = cropButton.background
         val ctx = requireContext()
         onSurface = ctx.themeColor(com.google.android.material.R.attr.colorOnSurface)
         // highlighted tools mimic the Save button: colorPrimary fill +
@@ -68,7 +73,12 @@ class ToolbarFragment : Fragment() {
         for (cb in colorButtons) {
             cb.setOnClickListener { callbacks?.onColorSelected(cb.color) }
         }
-        setActiveTool(InkTool.PEN)
+
+        // anchor the bright highlight on the pen once positions are known
+        view.post {
+            positionHighlight(penButton, animate = false)
+            highlightView?.visibility = View.VISIBLE
+        }
     }
 
     private fun colorPanelChildren(): List<ColorButton> {
@@ -90,10 +100,47 @@ class ToolbarFragment : Fragment() {
         // only the highlighted brush itself shows the current ink color
         penButton.showColor = tool == InkTool.PEN
         highlighterButton.showColor = tool == InkTool.HIGHLIGHTER
+
+        // tool-switch animation: the newly clicked tool gets a dim highlight
+        // immediately, while the bright highlight slides over to it
+        val newButton = buttonFor(tool)
+        dimmedButton?.background = defaultBg
+        dimmedButton = newButton
+        newButton.background = dimBg
+        positionHighlight(newButton, animate = highlightReady)
+        highlightReady = true
+    }
+
+    private fun buttonFor(tool: InkTool): View = when (tool) {
+        InkTool.CROP -> cropButton
+        InkTool.TEXT -> textButton
+        InkTool.ERASER -> eraserButton
+        InkTool.PEN -> penButton
+        InkTool.HIGHLIGHTER -> highlighterButton
+    }
+
+    private fun positionHighlight(btn: View, animate: Boolean) {
+        val hv = highlightView ?: return
+        val target = btn.left + btn.width / 2f - hv.width / 2f
+        if (!animate) {
+            hv.animate().cancel()
+            hv.translationX = target
+            // the bright highlight is home: clear the dim underneath
+            dimmedButton?.background = defaultBg
+            return
+        }
+        hv.animate()
+            .translationX(target)
+            .setDuration(220)
+            .setInterpolator(DecelerateInterpolator(2f))
+            .withEndAction {
+                // only clear the dim if this button is still the target
+                if (dimmedButton === btn) dimmedButton?.background = defaultBg
+            }
+            .start()
     }
 
     private fun applyButtonState(button: ImageButton, active: Boolean) {
-        button.background = if (active) highlightBg else defaultToolBg
         button.imageTintList = ColorStateList.valueOf(
             if (active) onPrimary else onSurface
         )
