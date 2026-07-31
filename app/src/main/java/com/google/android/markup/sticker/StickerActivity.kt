@@ -35,18 +35,19 @@ class StickerActivity : AppCompatActivity() {
         val highlighter = findViewById<ImageButton>(R.id.sticker_highlighter)
         val eraser = findViewById<ImageButton>(R.id.sticker_eraser)
 
+        val ring = androidx.core.content.ContextCompat.getDrawable(
+            this, R.drawable.tool_button_highlight
+        )
+        val defaultBg = pen.background
+        val neutral = themeColor(com.google.android.material.R.attr.colorOnSurface)
+
         fun highlight(active: ImageButton) {
-            val primary = primaryColor()
-            val neutral = themeColor(com.google.android.material.R.attr.colorOnSurface)
-            pen.imageTintList = android.content.res.ColorStateList.valueOf(
-                if (active === pen) primary else neutral
-            )
-            highlighter.imageTintList = android.content.res.ColorStateList.valueOf(
-                if (active === highlighter) primary else neutral
-            )
-            eraser.imageTintList = android.content.res.ColorStateList.valueOf(
-                if (active === eraser) primary else neutral
-            )
+            pen.imageTintList = android.content.res.ColorStateList.valueOf(neutral)
+            highlighter.imageTintList = android.content.res.ColorStateList.valueOf(neutral)
+            eraser.imageTintList = android.content.res.ColorStateList.valueOf(neutral)
+            pen.background = if (active === pen) ring else defaultBg
+            highlighter.background = if (active === highlighter) ring else defaultBg
+            eraser.background = if (active === eraser) ring else defaultBg
         }
 
         pen.setOnClickListener { canvas.tool = InkTool.PEN; highlight(pen) }
@@ -67,12 +68,6 @@ class StickerActivity : AppCompatActivity() {
         colorButtons.firstOrNull()?.let { it.checked = true }
 
         findViewById<View>(R.id.sticker_save).setOnClickListener { saveSticker() }
-    }
-
-    private fun primaryColor(): Int {
-        val tv = android.util.TypedValue()
-        theme.resolveAttribute(android.R.attr.colorPrimary, tv, true)
-        return tv.data
     }
 
     private fun saveSticker() {

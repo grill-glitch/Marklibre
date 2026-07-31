@@ -1,12 +1,12 @@
 package com.google.android.markup
 
-import android.content.res.ColorStateList
+import android.graphics.drawable.Drawable
 import android.os.Bundle
-import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 
 class ToolbarFragment : Fragment() {
@@ -26,6 +26,9 @@ class ToolbarFragment : Fragment() {
     private lateinit var highlighterButton: PenButton
     private lateinit var colorButtons: List<ColorButton>
 
+    private var highlightBg: Drawable? = null
+    private var defaultToolBg: Drawable? = null
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -42,6 +45,9 @@ class ToolbarFragment : Fragment() {
         highlighterButton = view.findViewById(R.id.ink_highlighter_button)
         penButton.setImageResource(R.drawable.ic_pen)
         highlighterButton.setImageResource(R.drawable.ic_highlighter)
+
+        highlightBg = ContextCompat.getDrawable(requireContext(), R.drawable.tool_button_highlight)
+        defaultToolBg = cropButton.background
 
         colorButtons = colorPanelChildren()
 
@@ -67,19 +73,9 @@ class ToolbarFragment : Fragment() {
     }
 
     fun setActiveTool(tool: InkTool) {
-        val primary = colorPrimary()
-        val neutral = requireContext().themeColor(
-            com.google.android.material.R.attr.colorOnSurface
-        )
-        cropButton.imageTintList = ColorStateList.valueOf(
-            if (tool == InkTool.CROP) primary else neutral
-        )
-        textButton.imageTintList = ColorStateList.valueOf(
-            if (tool == InkTool.TEXT) primary else neutral
-        )
-        eraserButton.imageTintList = ColorStateList.valueOf(
-            if (tool == InkTool.ERASER) primary else neutral
-        )
+        cropButton.background = if (tool == InkTool.CROP) highlightBg else defaultToolBg
+        textButton.background = if (tool == InkTool.TEXT) highlightBg else defaultToolBg
+        eraserButton.background = if (tool == InkTool.ERASER) highlightBg else defaultToolBg
         penButton.active = tool == InkTool.PEN
         highlighterButton.active = tool == InkTool.HIGHLIGHTER
     }
@@ -94,13 +90,5 @@ class ToolbarFragment : Fragment() {
         }
         penButton.activeColor = color
         highlighterButton.activeColor = color
-    }
-
-    private fun colorPrimary(): Int {
-        val tv = TypedValue()
-        requireContext().theme.resolveAttribute(
-            android.R.attr.colorPrimary, tv, true
-        )
-        return tv.data
     }
 }
