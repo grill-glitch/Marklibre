@@ -10,12 +10,16 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
+import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import androidx.core.content.ContextCompat
+import kotlin.math.atan2
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
@@ -95,6 +99,12 @@ class DrawingCanvasView @JvmOverloads constructor(
     // Element state captured at the start of a move/resize gesture, so the
     // whole gesture becomes a single undoable transform op.
     private var dragStartState: InkElement.Text? = null
+
+    // Rotation via the knob below the selection box
+    private var rotatingText = false
+    private var rotateStartAngle = 0f
+    private var rotateStartRotation = 0f
+    private var rotationIcon: Drawable? = null
 
     private val touchSlop: Float by lazy {
         ViewConfiguration.get(context).scaledTouchSlop.toFloat()
@@ -200,7 +210,16 @@ class DrawingCanvasView @JvmOverloads constructor(
                     c.drawPath(el.path, strokePaint(el.style, el.color, el.width))
                 is InkElement.Text -> {
                     val p = textPaint(el.color, el.font, el.size)
-                    c.drawText(el.text, el.x, el.y - p.ascent(), p)
+                    if (el.rotation != 0f) {
+                        val w = p.measureText(el.text)
+                        val h = p.descent() - p.ascent()
+                        c.save()
+                        c.rotate(el.rotation, el.x + w / 2f, el.y + h / 2f)
+                        c.drawText(el.text, el.x, el.y - p.ascent(), p)
+                        c.restore()
+                    } else {
+                        c.drawText(el.text, el.x, el.y - p.ascent(), p)
+                    }
                 }
             }
         }
@@ -222,16 +241,19 @@ class DrawingCanvasView @JvmOverloads constructor(
         val w = p.measureText(el.text)
         // ascent() is negative: text spans [el.y, el.y + descent - ascent]
         val h = p.descent() - p.ascent()
-        val rect = RectF(el.x, el.y, el.x + w, el.y + h)
-        val pad = 6f * density
-        rect.inset(-pad, -pad)
+        val rect = RectF(el.x - 6f * density, el.y - 6f * density, el.x + w + 6f * density, el.y + h + 6f * density)
+        val rotated = el.rotation != 0f
+        if (rotated) {
+            canvas.save()
+            canvas.rotate(el.rotation, el.x + w / 2f, el.y + h / 2f)
+        }
+        // border + corner handles (small white circles)
         val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 2f * density
             color = el.color
         }
         canvas.drawRect(rect, stroke)
-        // corner handles: small white circles
         val handle = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
         val hs = 6f * density
         for ((hx, hy) in listOf(
@@ -239,6 +261,42 @@ class DrawingCanvasView @JvmOverloads constructor(
             rect.left to rect.bottom, rect.right to rect.bottom
         )) {
             canvas.drawCircle(hx, hy, hs, handle)
+        }
+        // rotation handle: line below the box, dot + refresh icon at its end
+        drawRotationHandle(canvas, el, rect, stroke)
+        if (rotated) canvas.restore()
+    }
+
+    private fun drawRotationHandle(
+        canvas: Canvas,
+        el: InkElement.Text,
+        box: RectF,
+        linePaint: Paint
+    ) {
+        val lineLen = 24f * density
+        val dotR = 7f * density
+        val x = box.centerX()
+        val y0 = box.bottom
+        val y1 = y0 + lineLen
+        canvas.drawLine(x, y0, x, y1, linePaint)
+        val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = el.color }
+        canvas.drawCircle(x, y1, dotR, dot)
+        // refresh icon on the dot, tinted for contrast against the dot fill
+        val icon = rotationIcon ?: ContextCompat.getDrawable(context, R.drawable.refresh_24)
+            ?.mutate().also { rotationIcon = it }
+        icon?.let { d ->
+            val lum = 0.299f * Color.red(el.color) +
+                0.587f * Color.green(el.color) +
+                0.114f * Color.blue(el.color)
+            d.setTint(if (lum > 140f) Color.BLACK else Color.WHITE)
+            val isz = 16f * density
+            d.bounds = Rect(
+                (x - isz / 2f).toInt(),
+                (y1 - isz / 2f).toInt(),
+                (x + isz / 2f).toInt(),
+                (y1 + isz / 2f).toInt()
+            )
+            d.draw(canvas)
         }
     }
 
@@ -279,7 +337,7 @@ class DrawingCanvasView @JvmOverloads constructor(
             w = p.measureText(text)
         }
         val h = p.descent() - p.ascent()
-        val el = InkElement.Text(text, old.x, old.y, effectiveSize, color, font)
+        val el = InkElement.Text(text, old.x, old.y, effectiveSize, color, font, old.rotation)
         el.x = el.x.coerceIn(0f, max(0f, width - w))
         el.y = el.y.coerceIn(0f, max(0f, height - h))
         elements[idx] = el
@@ -404,7 +462,16 @@ class DrawingCanvasView @JvmOverloads constructor(
                     val p = textPaint(el.color, el.font, el.size * invK)
                     val pts = floatArrayOf(el.x, el.y)
                     inverse.mapPoints(pts)
-                    ic.drawText(el.text, pts[0], pts[1] - p.ascent(), p)
+                    if (el.rotation != 0f) {
+                        val w = p.measureText(el.text)
+                        val h = p.descent() - p.ascent()
+                        ic.save()
+                        ic.rotate(el.rotation, pts[0] + w / 2f, pts[1] + h / 2f)
+                        ic.drawText(el.text, pts[0], pts[1] - p.ascent(), p)
+                        ic.restore()
+                    } else {
+                        ic.drawText(el.text, pts[0], pts[1] - p.ascent(), p)
+                    }
                 }
             }
         }
@@ -427,6 +494,10 @@ class DrawingCanvasView @JvmOverloads constructor(
                 startStroke(event)
             }
             MotionEvent.ACTION_MOVE -> {
+                if (rotatingText) {
+                    rotateSelectedText(event.x, event.y)
+                    return true
+                }
                 if (resizeCorner != null) {
                     resizeSelectedText(event.x, event.y)
                     return true
@@ -462,6 +533,7 @@ class DrawingCanvasView @JvmOverloads constructor(
                 draggingText = false
                 scalingText = false
                 resizeCorner = null
+                rotatingText = false
                 dragStartState = null
                 listener?.onTextDragChanged(false, 0f, 0f)
             }
@@ -475,6 +547,10 @@ class DrawingCanvasView @JvmOverloads constructor(
                 if (textDown(event.x, event.y)) return true
             }
             MotionEvent.ACTION_MOVE -> {
+                if (rotatingText) {
+                    rotateSelectedText(event.x, event.y)
+                    return true
+                }
                 if (resizeCorner != null) {
                     resizeSelectedText(event.x, event.y)
                     return true
@@ -494,6 +570,7 @@ class DrawingCanvasView @JvmOverloads constructor(
             MotionEvent.ACTION_CANCEL -> {
                 draggingText = false
                 resizeCorner = null
+                rotatingText = false
                 dragStartState = null
                 listener?.onTextDragChanged(false, 0f, 0f)
             }
@@ -526,6 +603,11 @@ class DrawingCanvasView @JvmOverloads constructor(
             listener?.onTextDragChanged(false, 0f, 0f)
             return true
         }
+        if (rotatingText) {
+            rotatingText = false
+            commitTextTransform()
+            return true
+        }
         if (resizeCorner != null) {
             resizeCorner = null
             commitTextTransform()
@@ -535,14 +617,18 @@ class DrawingCanvasView @JvmOverloads constructor(
     }
 
     private fun snapState(el: InkElement.Text): InkElement.Text =
-        InkElement.Text(el.text, el.x, el.y, el.size, el.color, el.font)
+        InkElement.Text(el.text, el.x, el.y, el.size, el.color, el.font, el.rotation)
 
     /** Pushes one undoable op for a move/resize gesture (if anything moved). */
     private fun commitTextTransform() {
         val start = dragStartState ?: return
         val el = selectedText ?: return
         dragStartState = null
-        if (start.x == el.x && start.y == el.y && start.size == el.size) return
+        if (start.x == el.x && start.y == el.y && start.size == el.size &&
+            start.rotation == el.rotation
+        ) {
+            return
+        }
         undoStack.addLast(CanvasOp.EditText(start, el))
         redoStack.clear()
         notifyUndo()
@@ -558,6 +644,7 @@ class DrawingCanvasView @JvmOverloads constructor(
             el.x = start.x
             el.y = start.y
             el.size = start.size
+            el.rotation = start.rotation
         }
         dragStartState = null
         elements.removeAt(idx)
@@ -577,17 +664,25 @@ class DrawingCanvasView @JvmOverloads constructor(
         downY = y
         val sel = selectedText
         if (sel != null) {
-            cornerAt(x, y, sel)?.let { corner ->
+            val lp = toLocal(sel, x, y)
+            // rotation knob below the box
+            val knob = rotationKnob(sel)
+            if (hypot(lp.x - knob.x, lp.y - knob.y) <= 26f * density) {
                 dragStartState = snapState(sel)
-                startCornerResize(sel, corner, x, y)
+                startRotation(sel, x, y)
                 return true
             }
-            if (textBounds(sel).contains(x, y)) {
+            cornerAt(lp.x, lp.y, sel)?.let { corner ->
+                dragStartState = snapState(sel)
+                startCornerResize(sel, corner, lp.x, lp.y)
+                return true
+            }
+            if (textBounds(sel).contains(lp.x, lp.y)) {
                 // drag moves the selected text; a tap edits it (see UP)
                 dragStartState = snapState(sel)
                 draggingText = true
-                dragOffX = x - sel.x
-                dragOffY = y - sel.y
+                dragOffX = lp.x - sel.x
+                dragOffY = lp.y - sel.y
                 return true
             }
         }
@@ -600,6 +695,60 @@ class DrawingCanvasView @JvmOverloads constructor(
         selectedText = null
         invalidate()
         return false
+    }
+
+    /** Transforms a screen-space point into the text's local (unrotated) space. */
+    private fun toLocal(el: InkElement.Text, x: Float, y: Float): PointF {
+        val rot = el.rotation
+        if (rot == 0f) return PointF(x, y)
+        val p = textPaint(el.color, el.font, el.size)
+        val w = p.measureText(el.text)
+        val h = p.descent() - p.ascent()
+        val cx = el.x + w / 2f
+        val cy = el.y + h / 2f
+        val dx = x - cx
+        val dy = y - cy
+        val rad = Math.toRadians((-rot).toDouble())
+        val cos = kotlin.math.cos(rad)
+        val sin = kotlin.math.sin(rad)
+        return PointF(
+            cx + (dx * cos - dy * sin).toFloat(),
+            cy + (dx * sin + dy * cos).toFloat()
+        )
+    }
+
+    /** Rotation knob center in the text's local space (below the box). */
+    private fun rotationKnob(el: InkElement.Text): PointF {
+        val p = textPaint(el.color, el.font, el.size)
+        val w = p.measureText(el.text)
+        val h = p.descent() - p.ascent()
+        val pad = 6f * density
+        val lineLen = 24f * density
+        return PointF(el.x + w / 2f, el.y + h + pad + lineLen)
+    }
+
+    private fun startRotation(el: InkElement.Text, x: Float, y: Float) {
+        rotatingText = true
+        val p = textPaint(el.color, el.font, el.size)
+        val w = p.measureText(el.text)
+        val h = p.descent() - p.ascent()
+        val cx = el.x + w / 2f
+        val cy = el.y + h / 2f
+        rotateStartAngle = Math.toDegrees(atan2(y - cy, x - cx).toDouble()).toFloat()
+        rotateStartRotation = el.rotation
+        performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+    }
+
+    private fun rotateSelectedText(x: Float, y: Float) {
+        val el = selectedText ?: return
+        val p = textPaint(el.color, el.font, el.size)
+        val w = p.measureText(el.text)
+        val h = p.descent() - p.ascent()
+        val cx = el.x + w / 2f
+        val cy = el.y + h / 2f
+        val angle = Math.toDegrees(atan2(y - cy, x - cx).toDouble()).toFloat()
+        el.rotation = rotateStartRotation + (angle - rotateStartAngle)
+        renderInk()
     }
 
     private fun cornerAt(x: Float, y: Float, el: InkElement.Text): Int? {
@@ -650,8 +799,9 @@ class DrawingCanvasView @JvmOverloads constructor(
     private fun resizeSelectedText(x: Float, y: Float) {
         val el = selectedText ?: return
         val corner = resizeCorner ?: return
-        val newX = x - resizeGrabX
-        val newY = y - resizeGrabY
+        val lp = toLocal(el, x, y)
+        val newX = lp.x - resizeGrabX
+        val newY = lp.y - resizeGrabY
         val ratio = hypot(newX - resizeOpposite.x, newY - resizeOpposite.y) / resizeDist0
         if (ratio <= 0.05f) return
         val size = (resizeSize0 * ratio).coerceIn(10f * density, 200f * density)
@@ -675,7 +825,10 @@ class DrawingCanvasView @JvmOverloads constructor(
     private fun hitTestText(x: Float, y: Float): InkElement.Text? {
         for (i in elements.indices.reversed()) {
             val el = elements[i]
-            if (el is InkElement.Text && textBounds(el).contains(x, y)) return el
+            if (el is InkElement.Text) {
+                val lp = toLocal(el, x, y)
+                if (textBounds(el).contains(lp.x, lp.y)) return el
+            }
         }
         return null
     }
@@ -687,8 +840,9 @@ class DrawingCanvasView @JvmOverloads constructor(
 
     private fun moveSelectedText(x: Float, y: Float) {
         val el = selectedText ?: return
-        el.x = x - dragOffX
-        el.y = y - dragOffY
+        val lp = toLocal(el, x, y)
+        el.x = lp.x - dragOffX
+        el.y = lp.y - dragOffY
         listener?.onTextDragChanged(true, x, y)
         renderInk()
     }

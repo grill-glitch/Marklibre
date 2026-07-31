@@ -31,7 +31,8 @@ sealed class InkElement {
         var y: Float,
         var size: Float,
         val color: Int,
-        val font: String
+        val font: String,
+        var rotation: Float = 0f
     ) : InkElement()
 }
 
