@@ -3,12 +3,15 @@ package com.google.android.markup
 import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import android.view.View
 import android.view.WindowInsets
 import android.widget.ImageButton
@@ -234,12 +237,9 @@ class AnnotateActivity : AppCompatActivity() {
         Thread {
             try {
                 val flat = canvas.flattenFullRes()
-                val file = writePng(flat, "edited")
+                val uri = saveToMediaStore(flat)
                 runOnUiThread {
                     progress.visibility = View.GONE
-                    val uri = FileProvider.getUriForFile(
-                        this, "com.google.android.markup", file
-                    )
                     val result = Intent().apply {
                         data = uri
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -247,13 +247,42 @@ class AnnotateActivity : AppCompatActivity() {
                     setResult(Activity.RESULT_OK, result)
                     finish()
                 }
-            } catch (e: IOException) {
+            } catch (e: Exception) {
                 runOnUiThread {
                     progress.visibility = View.GONE
                     Toast.makeText(this, R.string.image_save_failed, Toast.LENGTH_SHORT).show()
                 }
             }
         }.start()
+    }
+
+    /**
+     * Writes the edited image into MediaStore (Pictures/Markup) so it shows up
+     * in the gallery. Returns the MediaStore URI (readable by any gallery app).
+     */
+    private fun saveToMediaStore(bm: Bitmap): Uri {
+        val ts = System.currentTimeMillis()
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "markup_$ts.png")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(
+                MediaStore.Images.Media.RELATIVE_PATH,
+                Environment.DIRECTORY_PICTURES + "/Markup"
+            )
+            put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+        val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val uri = contentResolver.insert(collection, values)
+            ?: throw IOException("MediaStore insert failed")
+        contentResolver.openOutputStream(uri)?.use { out ->
+            if (!bm.compress(Bitmap.CompressFormat.PNG, 100, out)) {
+                throw IOException("PNG compress failed")
+            }
+        } ?: throw IOException("MediaStore open failed")
+        values.clear()
+        values.put(MediaStore.Images.Media.IS_PENDING, 0)
+        contentResolver.update(uri, values, null, null)
+        return uri
     }
 
     private fun doShare() {
@@ -286,16 +315,15 @@ class AnnotateActivity : AppCompatActivity() {
         Thread {
             try {
                 val flat = canvas.flattenFullRes()
-                val file = writePng(flat, "edited")
+                val uri = saveToMediaStore(flat)
                 runOnUiThread {
                     progress.visibility = View.GONE
-                    val uri = FileProvider.getUriForFile(this, "com.google.android.markup", file)
                     val clip = ClipData.newUri(contentResolver, "markup", uri)
                     val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     cm.setPrimaryClip(clip)
                     Toast.makeText(this, R.string.copy, Toast.LENGTH_SHORT).show()
                 }
-            } catch (e: IOException) {
+            } catch (e: Exception) {
                 runOnUiThread {
                     progress.visibility = View.GONE
                     Toast.makeText(this, R.string.image_save_failed, Toast.LENGTH_SHORT).show()
