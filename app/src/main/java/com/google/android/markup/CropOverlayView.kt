@@ -43,6 +43,11 @@ class CropOverlayView @JvmOverloads constructor(
         color = Color.WHITE
     }
 
+    /** Save-button color for the handle dots. */
+    private val handleColor: Int by lazy {
+        context.themeColor(android.R.attr.colorPrimary, Color.WHITE)
+    }
+
     private var mode = Mode.NONE
     private var touchOffX = 0f
     private var touchOffY = 0f
@@ -88,9 +93,11 @@ class CropOverlayView @JvmOverloads constructor(
         canvas.drawRect(0f, rect.bottom, width.toFloat(), height.toFloat(), dimPaint)
         canvas.drawRect(0f, rect.top, rect.left, rect.bottom, dimPaint)
         canvas.drawRect(rect.right, rect.top, width.toFloat(), rect.bottom, dimPaint)
-        // border + handles
+        // border + handle dots, all in the Save-button color
+        borderPaint.color = handleColor
         canvas.drawRect(rect, borderPaint)
         val hs = 6f * density
+        handlePaint.color = handleColor
         val points = listOf(
             rect.left to rect.top,
             rect.right to rect.top,
@@ -102,7 +109,7 @@ class CropOverlayView @JvmOverloads constructor(
             rect.right to rect.centerY()
         )
         for ((hx, hy) in points) {
-            canvas.drawRect(hx - hs, hy - hs, hx + hs, hy + hs, handlePaint)
+            canvas.drawCircle(hx, hy, hs, handlePaint)
         }
     }
 
