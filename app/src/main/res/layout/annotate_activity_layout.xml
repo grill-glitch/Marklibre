@@ -71,16 +71,15 @@
                     android:layout_gravity="bottom|center_horizontal" />
             </LinearLayout>
 
-            <!-- Drag-to-delete drop target: capsule covering the toolbar row,
-                 shown while dragging text, below the image (never over it). -->
+            <!-- Drag-to-delete drop target: edge-to-edge sheet with rounded
+                 top corners covering the screen bottom, shown while dragging
+                 text (below the image, never over it). -->
             <ImageView
                 android:id="@+id/trash_drop"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
                 android:layout_gravity="bottom|center_horizontal"
-                android:layout_marginHorizontal="8dp"
-                android:layout_marginBottom="8dp"
-                android:background="@drawable/trash_pill"
+                android:background="@drawable/trash_sheet"
                 android:contentDescription="@string/delete"
                 android:scaleType="center"
                 android:src="@drawable/ic_delete"
