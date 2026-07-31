@@ -116,11 +116,13 @@ class DrawingCanvasView @JvmOverloads constructor(
             inverse.reset()
             return
         }
-        val vw = width.toFloat()
-        val vh = height.toFloat()
+        // Account for padding (nav-bar inset + ink_canvas_margin_bottom) so
+        // the image never fills the screen edge-to-edge behind the toolbar.
+        val vw = (width - paddingLeft - paddingRight).toFloat().coerceAtLeast(1f)
+        val vh = (height - paddingTop - paddingBottom).toFloat().coerceAtLeast(1f)
         val scale = min(vw / bm.width, vh / bm.height)
-        val dx = (vw - bm.width * scale) / 2f
-        val dy = (vh - bm.height * scale) / 2f
+        val dx = paddingLeft + (vw - bm.width * scale) / 2f
+        val dy = paddingTop + (vh - bm.height * scale) / 2f
         matrix.setScale(scale, scale)
         matrix.postTranslate(dx, dy)
         matrix.invert(inverse)

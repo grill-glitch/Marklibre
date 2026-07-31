@@ -21,6 +21,7 @@
                 android:id="@+id/drawing_canvas"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                android:layout_marginBottom="@dimen/ink_canvas_margin_bottom"
                 android:contentDescription="@string/drawing_canvas" />
 
             <com.google.android.markup.CropOverlayView
