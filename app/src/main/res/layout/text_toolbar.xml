@@ -38,7 +38,7 @@
         <ImageButton
             android:id="@+id/text_done"
             style="@style/MarkupToolbarButton"
-            android:contentDescription="@string/save"
+            android:contentDescription="@string/text_done"
             android:src="@drawable/ic_done"
             android:tint="?attr/colorPrimary" />
     </LinearLayout>

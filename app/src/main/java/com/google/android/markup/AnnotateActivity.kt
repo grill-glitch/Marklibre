@@ -89,8 +89,11 @@ class AnnotateActivity : AppCompatActivity() {
             view.findViewById<View>(R.id.crop_overlay).setPadding(0, 0, 0, insets.bottom)
             view.findViewById<View>(R.id.crop_actions).setPadding(0, 0, 0, insets.bottom)
             view.findViewById<View>(R.id.progress).setPadding(0, insets.top, 0, insets.bottom)
+            view.findViewById<View>(R.id.text_fragment).setPadding(0, 0, 0, 0)
             view.setPadding(insets.left, 0, insets.right, 0)
-            WindowInsets.CONSUMED
+            // Do NOT consume: children (TextEditorFragment) need the raw
+            // systemBars/IME insets to pad themselves (edge-to-edge).
+            windowInsets
         }
     }
 

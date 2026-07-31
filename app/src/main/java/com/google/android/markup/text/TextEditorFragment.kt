@@ -11,12 +11,15 @@ import android.widget.ImageButton
 import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import androidx.core.widget.doAfterTextChanged
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import com.google.android.markup.ColorButton
 import com.google.android.markup.FONT_NAMES
 import com.google.android.markup.InkElement
 import com.google.android.markup.R
 import com.google.android.markup.fontTypeface
+import kotlin.math.max
 
 class TextEditorFragment : Fragment() {
 
@@ -44,6 +47,14 @@ class TextEditorFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         root = view
+        // Keep the editor below the status bar and above the IME so the
+        // bottom toolbar is always reachable while typing.
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            v.setPadding(0, bars.top, 0, max(bars.bottom, ime.bottom))
+            insets
+        }
         textInput = view.findViewById(R.id.text_input)
         textColor = ContextCompat.getColor(requireContext(), R.color.ink_swatch_white)
         val done: ImageButton = view.findViewById(R.id.text_done)

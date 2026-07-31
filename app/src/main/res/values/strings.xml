@@ -31,6 +31,7 @@
     <string name="delete_screenshot">Delete screenshot?</string>
     <string name="tool_selected">Selected</string>
     <string name="text_hint">Add text</string>
+    <string name="text_done">Done</string>
     <string name="crop_confirm">Crop</string>
     <string name="crop_cancel">Cancel</string>
     <string name="sticker_saved">Sticker saved</string>
