@@ -162,9 +162,10 @@ class DrawingCanvasView @JvmOverloads constructor(
     private fun textBounds(el: InkElement.Text): RectF {
         val p = textPaint(el.color, el.font, el.size)
         val w = p.measureText(el.text)
+        // ascent() is negative: em-box height = descent - ascent
         val h = p.descent() - p.ascent()
         val pad = 12f * density
-        return RectF(el.x - pad, el.y - p.ascent() - pad, el.x + w + pad, el.y + h + pad)
+        return RectF(el.x - pad, el.y - pad, el.x + w + pad, el.y + h + pad)
     }
 
     private fun renderInk() {
@@ -198,18 +199,18 @@ class DrawingCanvasView @JvmOverloads constructor(
     private fun drawSelection(canvas: Canvas, el: InkElement.Text) {
         val p = textPaint(el.color, el.font, el.size)
         val w = p.measureText(el.text)
-        val top = el.y - p.ascent()
-        val bottom = el.y + p.descent()
-        val rect = RectF(el.x, top, el.x + w, bottom)
+        // ascent() is negative: text spans [el.y, el.y + descent - ascent]
+        val h = p.descent() - p.ascent()
+        val rect = RectF(el.x, el.y, el.x + w, el.y + h)
         val pad = 6f * density
         rect.inset(-pad, -pad)
         val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 2f * density
-            color = Color.WHITE
+            color = el.color
         }
         canvas.drawRect(rect, stroke)
-        val handle = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
+        val handle = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = el.color }
         val hs = 6f * density
         for ((hx, hy) in listOf(
             rect.left to rect.top, rect.right to rect.top,
