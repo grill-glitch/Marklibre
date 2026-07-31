@@ -39,6 +39,7 @@ class ImageState(val source: Bitmap?, val elements: List<InkElement>)
 
 sealed class CanvasOp {
     class Add(val element: InkElement) : CanvasOp()
+    class Remove(val index: Int, val element: InkElement) : CanvasOp()
     class EditText(val old: InkElement.Text, val new: InkElement.Text) : CanvasOp()
     class ReplaceImage(val prev: ImageState, val next: ImageState) : CanvasOp()
 }

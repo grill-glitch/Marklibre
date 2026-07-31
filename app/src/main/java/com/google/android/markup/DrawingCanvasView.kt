@@ -34,6 +34,10 @@ class DrawingCanvasView @JvmOverloads constructor(
         fun onUndoAvailability(hasUndo: Boolean, hasRedo: Boolean)
         fun onRequestNewText(x: Float, y: Float)
         fun onRequestTextEdit(element: InkElement.Text)
+        /** Drag-to-delete feedback: the drop target (trash) follows the drag. */
+        fun onTextDragChanged(dragging: Boolean, x: Float, y: Float)
+        /** True when (x, y) is over the text delete drop target. */
+        fun onTextDropTargetContains(x: Float, y: Float): Boolean
     }
 
     var listener: Listener? = null
@@ -329,6 +333,16 @@ class DrawingCanvasView @JvmOverloads constructor(
         when (op) {
             is CanvasOp.Add ->
                 if (forward) elements.add(op.element) else elements.remove(op.element)
+            is CanvasOp.Remove -> {
+                if (forward) {
+                    if (op.index < elements.size) elements.removeAt(op.index)
+                    else elements.remove(op.element)
+                } else {
+                    if (!elements.contains(op.element)) {
+                        elements.add(op.index.coerceAtMost(elements.size), op.element)
+                    }
+                }
+            }
             is CanvasOp.EditText ->
                 if (forward) replaceElement(op.old, op.new) else replaceElement(op.new, op.old)
             is CanvasOp.ReplaceImage -> {
@@ -427,6 +441,7 @@ class DrawingCanvasView @JvmOverloads constructor(
                 if (selectedText != null && draggingText) {
                     draggingText = false
                     scalingText = true
+                    listener?.onTextDragChanged(false, 0f, 0f)
                     baseSize = selectedText!!.size
                     lastSpan = pointerSpan(event)
                     val (fx, fy) = pointerFocus(event)
@@ -442,6 +457,7 @@ class DrawingCanvasView @JvmOverloads constructor(
                 draggingText = false
                 scalingText = false
                 resizeCorner = null
+                listener?.onTextDragChanged(false, 0f, 0f)
             }
         }
         return true
@@ -472,6 +488,7 @@ class DrawingCanvasView @JvmOverloads constructor(
             MotionEvent.ACTION_CANCEL -> {
                 draggingText = false
                 resizeCorner = null
+                listener?.onTextDragChanged(false, 0f, 0f)
             }
         }
         return true
@@ -482,6 +499,12 @@ class DrawingCanvasView @JvmOverloads constructor(
         if (draggingText) {
             val wasTap = hypot(x - downX, y - downY) <= touchSlop
             draggingText = false
+            listener?.onTextDragChanged(false, x, y)
+            if (!wasTap && listener?.onTextDropTargetContains(x, y) == true) {
+                // dropped on the trash -> delete the text
+                deleteDraggedText()
+                return true
+            }
             if (wasTap) {
                 // tap on the selected text -> open the editor (content + color)
                 selectedText?.let { listener?.onRequestTextEdit(it) }
@@ -490,6 +513,7 @@ class DrawingCanvasView @JvmOverloads constructor(
         }
         if (scalingText) {
             scalingText = false
+            listener?.onTextDragChanged(false, 0f, 0f)
             return true
         }
         if (resizeCorner != null) {
@@ -497,6 +521,18 @@ class DrawingCanvasView @JvmOverloads constructor(
             return true
         }
         return false
+    }
+
+    private fun deleteDraggedText() {
+        val el = selectedText ?: return
+        val idx = elements.indexOf(el)
+        if (idx < 0) return
+        elements.removeAt(idx)
+        undoStack.addLast(CanvasOp.Remove(idx, el))
+        redoStack.clear()
+        selectedText = null
+        renderInk()
+        notifyUndo()
     }
 
     /**
@@ -618,6 +654,7 @@ class DrawingCanvasView @JvmOverloads constructor(
         val el = selectedText ?: return
         el.x = x - dragOffX
         el.y = y - dragOffY
+        listener?.onTextDragChanged(true, x, y)
         renderInk()
     }
 

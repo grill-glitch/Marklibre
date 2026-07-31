@@ -70,6 +70,20 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="bottom|center_horizontal" />
             </LinearLayout>
+
+            <!-- Drag-to-delete drop target: shown while dragging text,
+                 floats below the image (never over it), above the toolbar. -->
+            <ImageView
+                android:id="@+id/trash_drop"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_gravity="bottom|center_horizontal"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/trash_circle"
+                android:contentDescription="@string/delete"
+                android:src="@drawable/ic_delete"
+                android:tint="?attr/colorOnPrimaryContainer"
+                android:visibility="gone" />
         </FrameLayout>
     </LinearLayout>
 

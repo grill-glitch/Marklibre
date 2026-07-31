@@ -6,8 +6,10 @@ import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.RectF
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -15,6 +17,7 @@ import android.provider.MediaStore
 import android.view.View
 import android.view.WindowInsets
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AlertDialog
@@ -32,6 +35,9 @@ class AnnotateActivity : AppCompatActivity() {
     private lateinit var toolbarFragment: ToolbarFragment
     private lateinit var textFragment: TextEditorFragment
     private lateinit var cropOverlay: CropOverlayView
+    private lateinit var trashDrop: ImageView
+    private var trashOnPrimaryContainer = 0
+    private var trashOnPrimary = 0
     private lateinit var cropActions: View
     private lateinit var toolbarContainer: View
     private lateinit var progress: View
@@ -55,6 +61,11 @@ class AnnotateActivity : AppCompatActivity() {
         undoButton = findViewById(R.id.undo_button)
         redoButton = findViewById(R.id.redo_button)
         toolbarFragment = supportFragmentManager.findFragmentById(R.id.toolbar_fragment) as ToolbarFragment
+        trashDrop = findViewById(R.id.trash_drop)
+        trashOnPrimaryContainer = themeColor(
+            com.google.android.material.R.attr.colorOnPrimaryContainer
+        )
+        trashOnPrimary = themeColor(com.google.android.material.R.attr.colorOnPrimary)
         textFragment = supportFragmentManager.findFragmentById(R.id.text_fragment) as TextEditorFragment
 
         setupInsets()
@@ -141,6 +152,24 @@ class AnnotateActivity : AppCompatActivity() {
             override fun onRequestTextEdit(element: InkElement.Text) {
                 textFragment.showForEdit(element)
             }
+
+            override fun onTextDragChanged(dragging: Boolean, x: Float, y: Float) {
+                if (!dragging) {
+                    trashDrop.visibility = View.GONE
+                    return
+                }
+                trashDrop.visibility = View.VISIBLE
+                val active = trashBounds().contains(x, y)
+                trashDrop.setBackgroundResource(
+                    if (active) R.drawable.trash_circle_active else R.drawable.trash_circle
+                )
+                trashDrop.imageTintList = ColorStateList.valueOf(
+                    if (active) trashOnPrimary else trashOnPrimaryContainer
+                )
+            }
+
+            override fun onTextDropTargetContains(x: Float, y: Float): Boolean =
+                trashDrop.visibility == View.VISIBLE && trashBounds().contains(x, y)
         }
         toolbarFragment.setActiveTool(InkTool.PEN)
         toolbarFragment.setSelectedColor(canvas.color)
@@ -162,6 +191,13 @@ class AnnotateActivity : AppCompatActivity() {
             toolbarFragment.setActiveTool(InkTool.PEN)
             toolbarFragment.setColorPanelVisible(false)
         }
+    }
+
+    /** Trash bounds in canvas coordinates (canvas fills the FrameLayout). */
+    private fun trashBounds(): RectF {
+        val l = trashDrop.left.toFloat()
+        val t = trashDrop.top.toFloat()
+        return RectF(l, t, l + trashDrop.width, t + trashDrop.height)
     }
 
     private fun setupCrop() {
