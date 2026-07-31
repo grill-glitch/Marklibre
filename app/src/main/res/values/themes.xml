@@ -5,7 +5,8 @@
     <style name="MarkupToolbarButton">
         <item name="android:layout_width">@dimen/ink_lite_toolbar_button_size</item>
         <item name="android:layout_height">@dimen/ink_lite_toolbar_button_size</item>
-        <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
+        <!-- no ripple: pressing a tool must not flash an expanding circle -->
+        <item name="android:background">@android:color/transparent</item>
         <item name="android:scaleType">centerInside</item>
         <item name="android:padding">12dp</item>
     </style>
