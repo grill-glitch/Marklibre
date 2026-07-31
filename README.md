@@ -3,7 +3,8 @@
 An open-source, dependency-free reimplementation of **Google Markup**
 (`org.librelab.marklibre`), the screenshot annotation editor shipped on
 Pixel / GMS devices. Built from scratch in Kotlin — no Google proprietary
-code, no closed-source SDKs, no native Ink/Sketchology engine.
+code, no closed-source SDKs, no native Ink/Sketchology engine. The entire
+ink engine is a hand-drawn Canvas implementation.
 
 > **Disclaimer:** This is an independent, clean-room-style reimplementation
 > based on the *observable behavior* of the original app. It is not affiliated
@@ -16,7 +17,8 @@ code, no closed-source SDKs, no native Ink/Sketchology engine.
 - **Highlighter** — translucent thick stroke over the image
 - **Eraser** — removes ink only, never damages the underlying image
 - **Text tool** — 6 font styles (Bold / Classic / Modern / Script / Soft /
-  Bubbly), 7 colors; drag to move, pinch to scale, double-tap to edit
+  Bubbly), 7 colors; tap to select, tap again to edit, drag to move, corner
+  handles to scale (anchored on the opposite corner), rotation knob to rotate
 - **Crop** — draggable rectangle with 8 handles
 - **Undo / Redo** — full history for strokes, text edits and crops
 - **Save / Share / Copy / Delete** — full-resolution PNG export via FileProvider
@@ -57,7 +59,7 @@ and signature-level permission model as the original).
 ## Project structure
 
 ```
-app/src/main/java/com/google/android/markup/
+app/src/main/java/org/librelab/marklibre/
 ├── AnnotateActivity.kt      # main editor (ACTION_EDIT image/*)
 ├── DrawingCanvasView.kt     # ink engine: strokes, text, undo/redo, export
 ├── InkModel.kt              # element / operation model
