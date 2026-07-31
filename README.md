@@ -1,0 +1,74 @@
+# Markup-libre
+
+An open-source, dependency-free reimplementation of **Google Markup**
+(`com.google.android.markup`), the screenshot annotation editor shipped on
+Pixel / GMS devices. Built from scratch in Kotlin — no Google proprietary
+code, no closed-source SDKs, no native Ink/Sketchology engine.
+
+> **Disclaimer:** This is an independent, clean-room-style reimplementation
+> based on the *observable behavior* of the original app. It is not affiliated
+> with or endorsed by Google. "Markup" and "Google" are trademarks of their
+> respective owners.
+
+## Features
+
+- **Pen** — 7 ink colors, round-cap stroke with quadratic smoothing
+- **Highlighter** — translucent thick stroke over the image
+- **Eraser** — removes ink only, never damages the underlying image
+- **Text tool** — 6 font styles (Bold / Classic / Modern / Script / Soft /
+  Bubbly), 7 colors; drag to move, pinch to scale, double-tap to edit
+- **Crop** — draggable rectangle with 8 handles
+- **Undo / Redo** — full history for strokes, text edits and crops
+- **Save / Share / Copy / Delete** — full-resolution PNG export via FileProvider
+- **Sticker editor** — draw on a transparent canvas, save as a sticker PNG
+  (mirrors the original `StickerActivity` flow)
+- **Drop-in for custom ROMs** — same package name, versionCode and
+  `ACTION_EDIT image/*` entry point as the original, so SystemUI screenshot
+  "edit" integration works out of the box
+
+## Tech stack
+
+| Component | Version |
+|---|---|
+| Kotlin | 2.4.0 |
+| Gradle | 9.6.0 (wrapper) |
+| Android Gradle Plugin | 9.3.1 |
+| compileSdk / targetSdk | 36 |
+| minSdk | 35 (Android 15) |
+
+## Build
+
+```bash
+./gradlew :app:assembleDebug
+# APK: app/build/outputs/apk/debug/app-debug.apk
+```
+
+Requires JDK 17+ and Android SDK Platform 36.
+
+## Install
+
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+Or integrate into a ROM build as a system app (it uses the same package name
+and signature-level permission model as the original).
+
+## Project structure
+
+```
+app/src/main/java/com/google/android/markup/
+├── AnnotateActivity.kt      # main editor (ACTION_EDIT image/*)
+├── DrawingCanvasView.kt     # ink engine: strokes, text, undo/redo, export
+├── InkModel.kt              # element / operation model
+├── ToolbarFragment.kt       # crop / text / pen / highlighter / eraser
+├── ColorButton.kt           # ink color swatch
+├── PenButton.kt             # tinted pen/highlighter tool button
+├── CropOverlayView.kt       # crop handles + dimming overlay
+├── text/                    # text editor (fonts, colors)
+└── sticker/                 # sticker editor
+```
+
+## License
+
+[GPLv3](LICENSE) — free software, use it, modify it, ship it in your ROM.

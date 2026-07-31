@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ink_swatch_black">#000000</color>
+    <color name="ink_swatch_red">#FF5252</color>
+    <color name="ink_swatch_yellow">#FFC400</color>
+    <color name="ink_swatch_green">#00E676</color>
+    <color name="ink_swatch_blue">#00B0FF</color>
+    <color name="ink_swatch_purple">#D500F9</color>
+    <color name="ink_swatch_white">#FAFAFA</color>
+    <color name="text_editor_scrim">#A333</color>
+    <color name="toolbar_tint">#FF000000</color>
+    <color name="crop_dim">#99000000</color>
+    <color name="crop_handle">#FFFFFFFF</color>
+</resources>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="markup">Markup</string>
+    <string name="save">Save</string>
+    <string name="share">Share</string>
+    <string name="copy">Copy</string>
+    <string name="delete">Delete</string>
+    <string name="crop">Crop</string>
+    <string name="ink_text">Text</string>
+    <string name="ink_pen">Pen</string>
+    <string name="ink_highlighter">Highlighter</string>
+    <string name="ink_eraser">Eraser</string>
+    <string name="ink_undo">Undo</string>
+    <string name="ink_redo">Redo</string>
+    <string name="ink_color_black">Black</string>
+    <string name="ink_color_red">Red</string>
+    <string name="ink_color_yellow">Yellow</string>
+    <string name="ink_color_green">Green</string>
+    <string name="ink_color_blue">Blue</string>
+    <string name="ink_color_purple">Purple</string>
+    <string name="ink_color_white">White</string>
+    <string name="bold_font">Bold Font</string>
+    <string name="classic_font">Classic Font</string>
+    <string name="modern_font">Modern Font</string>
+    <string name="script_font">Script Font</string>
+    <string name="soft_font">Soft Font</string>
+    <string name="bubbly_font">Bubbly Font</string>
+    <string name="drawing_canvas">Drawing canvas</string>
+    <string name="image_load_failed">Image cannot be loaded</string>
+    <string name="image_save_failed">Failed to save image</string>
+    <string name="delete_screenshot">Delete screenshot?</string>
+    <string name="tool_selected">Selected</string>
+    <string name="text_hint">Add text</string>
+    <string name="crop_confirm">Crop</string>
+    <string name="crop_cancel">Cancel</string>
+    <string name="sticker_saved">Sticker saved</string>
+</resources>

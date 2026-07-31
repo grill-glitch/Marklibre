@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center_horizontal"
+    android:animateLayoutChanges="true"
+    android:elevation="@dimen/toolbar_elevation"
+    android:gravity="center_horizontal"
+    android:orientation="vertical">
+
+    <include layout="@layout/color_panel" />
+
+    <LinearLayout
+        android:id="@+id/tool_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorSurfaceContainerHighest"
+        android:gravity="center_horizontal"
+        android:orientation="horizontal"
+        android:paddingHorizontal="8dp">
+
+        <ImageButton
+            android:id="@+id/crop_button"
+            style="@style/MarkupToolbarButton"
+            android:contentDescription="@string/crop"
+            android:src="@drawable/ic_crop"
+            android:tint="@color/toolbar_tint"
+            android:tooltipText="@string/crop" />
+
+        <ImageButton
+            android:id="@+id/ink_text_button"
+            style="@style/MarkupToolbarButton"
+            android:contentDescription="@string/ink_text"
+            android:src="@drawable/ic_text"
+            android:tint="@color/toolbar_tint"
+            android:tooltipText="@string/ink_text" />
+
+        <com.google.android.markup.PenButton
+            android:id="@+id/ink_pen_button"
+            style="@style/MarkupToolbarButton"
+            android:layout_gravity="center"
+            app:neutral_color="@color/toolbar_tint"
+            app:tool_name="@string/ink_pen"
+            android:tooltipText="@string/ink_pen" />
+
+        <com.google.android.markup.PenButton
+            android:id="@+id/ink_highlighter_button"
+            style="@style/MarkupToolbarButton"
+            android:layout_gravity="center"
+            app:neutral_color="@color/toolbar_tint"
+            app:tool_name="@string/ink_highlighter"
+            android:tooltipText="@string/ink_highlighter" />
+
+        <ImageButton
+            android:id="@+id/ink_eraser_button"
+            style="@style/MarkupToolbarButton"
+            android:contentDescription="@string/ink_eraser"
+            android:src="@drawable/ic_eraser"
+            android:tint="@color/toolbar_tint"
+            android:tooltipText="@string/ink_eraser" />
+    </LinearLayout>
+</LinearLayout>

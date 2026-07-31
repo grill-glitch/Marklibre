@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/text_toolbar"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center_horizontal"
+    android:layout_marginHorizontal="8dp"
+    android:background="@drawable/floating_toolbar_background"
+    android:clickable="true"
+    android:importantForAccessibility="no"
+    android:orientation="vertical"
+    android:paddingHorizontal="4dp">
+
+    <LinearLayout
+        android:id="@+id/font_controls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/font_list"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:scrollbars="horizontal">
+
+            <Button style="@style/FontButton" />
+            <Button style="@style/FontButton" />
+            <Button style="@style/FontButton" />
+            <Button style="@style/FontButton" />
+            <Button style="@style/FontButton" />
+            <Button style="@style/FontButton" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/text_done"
+            style="@style/MarkupToolbarButton"
+            android:contentDescription="@string/save"
+            android:src="@drawable/ic_done"
+            android:tint="?attr/colorPrimary" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/color_list"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_white" />
+        <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_black" />
+        <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_red" />
+        <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_yellow" />
+        <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_green" />
+        <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_blue" />
+        <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_purple" />
+    </LinearLayout>
+</LinearLayout>

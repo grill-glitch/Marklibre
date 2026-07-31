@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:visibility="gone">
+
+    <LinearLayout
+        android:id="@+id/editing_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/text_editor_scrim"
+        android:orientation="vertical">
+
+        <com.google.android.markup.text.MarkupEditText
+            android:id="@+id/text_input"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="#0000"
+            android:ellipsize="none"
+            android:gravity="center|bottom"
+            android:hint="@string/text_hint"
+            android:imeOptions="flagNoExtractUi"
+            android:importantForAutofill="no"
+            android:inputType="textLongMessage|textCapSentences|textAutoCorrect|textMultiLine"
+            android:textSize="@dimen/ink_default_text_size" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1.2" />
+    </LinearLayout>
+
+    <include layout="@layout/text_toolbar" />
+
+</FrameLayout>

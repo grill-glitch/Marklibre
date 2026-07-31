@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#00000000">
+
+    <com.google.android.markup.DrawingCanvasView
+        android:id="@+id/sticker_canvas"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/sticker_tools"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/colorSurfaceContainerHighest"
+            android:orientation="horizontal"
+            android:paddingHorizontal="8dp">
+
+            <ImageButton
+                android:id="@+id/sticker_pen"
+                style="@style/MarkupToolbarButton"
+                android:contentDescription="@string/ink_pen"
+                android:src="@drawable/ic_pen"
+                android:tint="@color/toolbar_tint" />
+
+            <ImageButton
+                android:id="@+id/sticker_highlighter"
+                style="@style/MarkupToolbarButton"
+                android:contentDescription="@string/ink_highlighter"
+                android:src="@drawable/ic_highlighter"
+                android:tint="@color/toolbar_tint" />
+
+            <ImageButton
+                android:id="@+id/sticker_eraser"
+                style="@style/MarkupToolbarButton"
+                android:contentDescription="@string/ink_eraser"
+                android:src="@drawable/ic_eraser"
+                android:tint="@color/toolbar_tint" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/sticker_colors"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/floating_toolbar_background"
+            android:orientation="horizontal"
+            android:padding="4dp">
+
+            <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_black" />
+            <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_red" />
+            <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_yellow" />
+            <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_green" />
+            <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_blue" />
+            <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_purple" />
+            <com.google.android.markup.ColorButton style="@style/InkColorButton" app:ink_color="@color/ink_swatch_white" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/sticker_save"
+        style="@style/Widget.Material3.Button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|bottom"
+        android:layout_margin="16dp"
+        android:text="@string/save" />
+</FrameLayout>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="MarkupTheme" parent="Theme.Material3.DayNight.NoActionBar" />
+
+    <style name="MarkupToolbarButton">
+        <item name="android:layout_width">@dimen/ink_lite_toolbar_button_size</item>
+        <item name="android:layout_height">@dimen/ink_lite_toolbar_button_size</item>
+        <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
+        <item name="android:scaleType">centerInside</item>
+        <item name="android:padding">12dp</item>
+    </style>
+
+    <style name="FontButton">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">44dp</item>
+        <item name="android:background">?attr/selectableItemBackground</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:paddingHorizontal">12dp</item>
+        <item name="android:minWidth">0dp</item>
+    </style>
+
+    <style name="InkColorButton">
+        <item name="android:layout_width">@dimen/ink_lite_toolbar_button_size</item>
+        <item name="android:layout_height">@dimen/ink_lite_toolbar_button_size</item>
+        <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
+    </style>
+</resources>
