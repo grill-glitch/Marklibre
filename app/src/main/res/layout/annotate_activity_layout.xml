@@ -83,7 +83,7 @@
                 android:contentDescription="@string/delete"
                 android:scaleType="center"
                 android:src="@drawable/ic_delete"
-                android:tint="?attr/colorOnPrimaryContainer"
+                android:tint="?attr/colorOnPrimary"
                 android:visibility="gone" />
         </FrameLayout>
     </LinearLayout>

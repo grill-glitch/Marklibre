@@ -164,7 +164,7 @@ class AnnotateActivity : AppCompatActivity() {
                     if (active) R.drawable.trash_sheet_active else R.drawable.trash_sheet
                 )
                 trashDrop.imageTintList = ColorStateList.valueOf(
-                    if (active) trashOnPrimary else trashOnPrimaryContainer
+                    if (active) trashOnPrimaryContainer else trashOnPrimary
                 )
             }
 
