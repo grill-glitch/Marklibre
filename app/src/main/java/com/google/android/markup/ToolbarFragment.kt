@@ -54,8 +54,6 @@ class ToolbarFragment : Fragment() {
         val ctx = requireContext()
         onSurface = ctx.themeColor(com.google.android.material.R.attr.colorOnSurface)
         onContainer = ctx.themeColor(com.google.android.material.R.attr.colorOnPrimaryContainer)
-        penButton.onContainerColor = onContainer
-        highlighterButton.onContainerColor = onContainer
 
         colorButtons = colorPanelChildren()
 
@@ -87,6 +85,9 @@ class ToolbarFragment : Fragment() {
         applyButtonState(eraserButton, tool == InkTool.ERASER)
         penButton.active = tool == InkTool.PEN
         highlighterButton.active = tool == InkTool.HIGHLIGHTER
+        // only the highlighted brush itself shows the current ink color
+        penButton.showColor = tool == InkTool.PEN
+        highlighterButton.showColor = tool == InkTool.HIGHLIGHTER
     }
 
     private fun applyButtonState(button: ImageButton, active: Boolean) {
@@ -104,5 +105,7 @@ class ToolbarFragment : Fragment() {
         for (cb in colorButtons) {
             cb.checked = cb.color == color
         }
+        penButton.activeColor = color
+        highlighterButton.activeColor = color
     }
 }

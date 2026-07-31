@@ -10,10 +10,10 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 
 /**
- * Toolbar button for pen/highlighter. Active state: the whole button is
- * filled with colorPrimaryContainer and the icon switches to
- * colorOnPrimaryContainer (the MD3 foreground for that fill); inactive:
- * transparent selectable background, icon in neutral colorOnSurface.
+ * Toolbar button for pen/highlighter.
+ * - active: whole button filled with colorPrimaryContainer
+ * - showColor (any color tool active): icon tinted with the current ink color
+ * - otherwise: icon in neutral colorOnSurface
  */
 class PenButton @JvmOverloads constructor(
     context: Context,
@@ -22,9 +22,19 @@ class PenButton @JvmOverloads constructor(
 
     var neutralColor: Int = Color.BLACK
 
-    var onContainerColor: Int = Color.WHITE
+    var activeColor: Int = Color.BLACK
+        set(value) {
+            field = value
+            refresh()
+        }
 
     var active: Boolean = false
+        set(value) {
+            field = value
+            refresh()
+        }
+
+    var showColor: Boolean = false
         set(value) {
             field = value
             refresh()
@@ -47,7 +57,7 @@ class PenButton @JvmOverloads constructor(
             defaultBackground ?: defaultSelectableBg()
         }
         imageTintList = ColorStateList.valueOf(
-            if (active) onContainerColor else neutralColor
+            if (showColor) activeColor else neutralColor
         )
     }
 
