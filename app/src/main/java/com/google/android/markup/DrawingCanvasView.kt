@@ -92,6 +92,10 @@ class DrawingCanvasView @JvmOverloads constructor(
     private var downX = 0f
     private var downY = 0f
 
+    // Element state captured at the start of a move/resize gesture, so the
+    // whole gesture becomes a single undoable transform op.
+    private var dragStartState: InkElement.Text? = null
+
     private val touchSlop: Float by lazy {
         ViewConfiguration.get(context).scaledTouchSlop.toFloat()
     }
@@ -439,6 +443,7 @@ class DrawingCanvasView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
                 if (selectedText != null && draggingText) {
+                    if (dragStartState == null) dragStartState = snapState(selectedText!!)
                     draggingText = false
                     scalingText = true
                     listener?.onTextDragChanged(false, 0f, 0f)
@@ -457,6 +462,7 @@ class DrawingCanvasView @JvmOverloads constructor(
                 draggingText = false
                 scalingText = false
                 resizeCorner = null
+                dragStartState = null
                 listener?.onTextDragChanged(false, 0f, 0f)
             }
         }
@@ -488,6 +494,7 @@ class DrawingCanvasView @JvmOverloads constructor(
             MotionEvent.ACTION_CANCEL -> {
                 draggingText = false
                 resizeCorner = null
+                dragStartState = null
                 listener?.onTextDragChanged(false, 0f, 0f)
             }
         }
@@ -502,9 +509,12 @@ class DrawingCanvasView @JvmOverloads constructor(
             if (!wasTap && listener?.onTextDropTargetContains(x, y) == true) {
                 // dropped on the trash -> delete the text
                 deleteDraggedText()
-            } else if (wasTap) {
-                // tap on the selected text -> open the editor (content + color)
-                selectedText?.let { listener?.onRequestTextEdit(it) }
+            } else {
+                if (!wasTap) commitTextTransform()
+                if (wasTap) {
+                    // tap on the selected text -> open the editor (content + color)
+                    selectedText?.let { listener?.onRequestTextEdit(it) }
+                }
             }
             // hide the trash AFTER the drop check (it gates on its own bounds)
             listener?.onTextDragChanged(false, x, y)
@@ -512,20 +522,44 @@ class DrawingCanvasView @JvmOverloads constructor(
         }
         if (scalingText) {
             scalingText = false
+            commitTextTransform()
             listener?.onTextDragChanged(false, 0f, 0f)
             return true
         }
         if (resizeCorner != null) {
             resizeCorner = null
+            commitTextTransform()
             return true
         }
         return false
+    }
+
+    private fun snapState(el: InkElement.Text): InkElement.Text =
+        InkElement.Text(el.text, el.x, el.y, el.size, el.color, el.font)
+
+    /** Pushes one undoable op for a move/resize gesture (if anything moved). */
+    private fun commitTextTransform() {
+        val start = dragStartState ?: return
+        val el = selectedText ?: return
+        dragStartState = null
+        if (start.x == el.x && start.y == el.y && start.size == el.size) return
+        undoStack.addLast(CanvasOp.EditText(start, el))
+        redoStack.clear()
+        notifyUndo()
     }
 
     private fun deleteDraggedText() {
         val el = selectedText ?: return
         val idx = elements.indexOf(el)
         if (idx < 0) return
+        // restore the pre-drag state so undo brings the text back where it
+        // was BEFORE the drag toward the trash started
+        dragStartState?.let { start ->
+            el.x = start.x
+            el.y = start.y
+            el.size = start.size
+        }
+        dragStartState = null
         elements.removeAt(idx)
         undoStack.addLast(CanvasOp.Remove(idx, el))
         redoStack.clear()
@@ -544,11 +578,13 @@ class DrawingCanvasView @JvmOverloads constructor(
         val sel = selectedText
         if (sel != null) {
             cornerAt(x, y, sel)?.let { corner ->
+                dragStartState = snapState(sel)
                 startCornerResize(sel, corner, x, y)
                 return true
             }
             if (textBounds(sel).contains(x, y)) {
                 // drag moves the selected text; a tap edits it (see UP)
+                dragStartState = snapState(sel)
                 draggingText = true
                 dragOffX = x - sel.x
                 dragOffY = y - sel.y
