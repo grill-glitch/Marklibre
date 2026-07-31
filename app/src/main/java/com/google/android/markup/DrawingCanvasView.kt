@@ -223,13 +223,14 @@ class DrawingCanvasView @JvmOverloads constructor(
             color = el.color
         }
         canvas.drawRect(rect, stroke)
-        val handle = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = el.color }
+        // corner handles: small white circles
+        val handle = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
         val hs = 6f * density
         for ((hx, hy) in listOf(
             rect.left to rect.top, rect.right to rect.top,
             rect.left to rect.bottom, rect.right to rect.bottom
         )) {
-            canvas.drawRect(hx - hs, hy - hs, hx + hs, hy + hs, handle)
+            canvas.drawCircle(hx, hy, hs, handle)
         }
     }
 
