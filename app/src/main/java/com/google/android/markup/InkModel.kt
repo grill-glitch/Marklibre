@@ -1,12 +1,21 @@
 package com.google.android.markup
 
+import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.graphics.Path
 import android.graphics.Typeface
+import android.util.TypedValue
 
 enum class InkTool { PEN, HIGHLIGHTER, ERASER, TEXT, CROP }
 
 enum class StrokeStyle { PEN, HIGHLIGHTER, ERASER }
+
+/** Resolves a theme attribute (e.g. colorOnSurface) to a concrete color. */
+fun Context.themeColor(attr: Int, fallback: Int = Color.BLACK): Int {
+    val tv = TypedValue()
+    return if (theme.resolveAttribute(attr, tv, true)) tv.data else fallback
+}
 
 sealed class InkElement {
     class Stroke(

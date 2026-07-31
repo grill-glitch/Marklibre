@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="MarkupTheme" parent="Theme.Material3.DayNight.NoActionBar" />
+    <style name="MarkupTheme" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar" />
 
     <style name="MarkupToolbarButton">
         <item name="android:layout_width">@dimen/ink_lite_toolbar_button_size</item>

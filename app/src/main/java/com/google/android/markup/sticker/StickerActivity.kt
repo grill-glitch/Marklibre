@@ -13,6 +13,7 @@ import com.google.android.markup.ColorButton
 import com.google.android.markup.DrawingCanvasView
 import com.google.android.markup.InkTool
 import com.google.android.markup.R
+import com.google.android.markup.themeColor
 import java.io.File
 import java.io.FileOutputStream
 
@@ -36,14 +37,15 @@ class StickerActivity : AppCompatActivity() {
 
         fun highlight(active: ImageButton) {
             val primary = primaryColor()
+            val neutral = themeColor(com.google.android.material.R.attr.colorOnSurface)
             pen.imageTintList = android.content.res.ColorStateList.valueOf(
-                if (active === pen) primary else 0xFF000000.toInt()
+                if (active === pen) primary else neutral
             )
             highlighter.imageTintList = android.content.res.ColorStateList.valueOf(
-                if (active === highlighter) primary else 0xFF000000.toInt()
+                if (active === highlighter) primary else neutral
             )
             eraser.imageTintList = android.content.res.ColorStateList.valueOf(
-                if (active === eraser) primary else 0xFF000000.toInt()
+                if (active === eraser) primary else neutral
             )
         }
 

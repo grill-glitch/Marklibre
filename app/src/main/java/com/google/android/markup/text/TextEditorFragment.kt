@@ -19,6 +19,7 @@ import com.google.android.markup.FONT_NAMES
 import com.google.android.markup.InkElement
 import com.google.android.markup.R
 import com.google.android.markup.fontTypeface
+import com.google.android.markup.themeColor
 import kotlin.math.max
 
 class TextEditorFragment : Fragment() {
@@ -145,14 +146,14 @@ class TextEditorFragment : Fragment() {
     }
 
     private fun refreshFontHighlight() {
+        val ctx = requireContext()
+        val selected = ctx.themeColor(com.google.android.material.R.attr.colorOnSurface)
+        val unselected = ctx.themeColor(
+            com.google.android.material.R.attr.colorOnSurfaceVariant, 0xFF9E9E9E.toInt()
+        )
         for ((i, b) in fontButtons.withIndex()) {
-            val selected = FONT_NAMES[i] == selectedFont
-            b.setTextColor(
-                ContextCompat.getColor(
-                    requireContext(),
-                    if (selected) R.color.toolbar_tint else android.R.color.darker_gray
-                )
-            )
+            val isSel = FONT_NAMES[i] == selectedFont
+            b.setTextColor(if (isSel) selected else unselected)
         }
     }
 

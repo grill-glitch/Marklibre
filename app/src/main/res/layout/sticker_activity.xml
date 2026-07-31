@@ -29,21 +29,21 @@
                 style="@style/MarkupToolbarButton"
                 android:contentDescription="@string/ink_pen"
                 android:src="@drawable/ic_pen"
-                android:tint="@color/toolbar_tint" />
+                android:tint="?attr/colorOnSurface" />
 
             <ImageButton
                 android:id="@+id/sticker_highlighter"
                 style="@style/MarkupToolbarButton"
                 android:contentDescription="@string/ink_highlighter"
                 android:src="@drawable/ic_highlighter"
-                android:tint="@color/toolbar_tint" />
+                android:tint="?attr/colorOnSurface" />
 
             <ImageButton
                 android:id="@+id/sticker_eraser"
                 style="@style/MarkupToolbarButton"
                 android:contentDescription="@string/ink_eraser"
                 android:src="@drawable/ic_eraser"
-                android:tint="@color/toolbar_tint" />
+                android:tint="?attr/colorOnSurface" />
         </LinearLayout>
 
         <LinearLayout

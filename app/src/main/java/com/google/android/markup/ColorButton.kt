@@ -38,6 +38,17 @@ class ColorButton @JvmOverloads constructor(
         val cx = width / 2f
         val cy = height / 2f
         val r = minOf(width, height) / 2f - 8f * density
+        // neutral outline keeps black/white swatches visible on any surface
+        val outline = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 1.5f * density
+            color = context.themeColor(
+                com.google.android.material.R.attr.colorOnSurfaceVariant,
+                0xFF9E9E9E.toInt()
+            )
+            alpha = 110
+        }
+        canvas.drawCircle(cx, cy, r + 1f * density, outline)
         val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 2f * density

@@ -25,7 +25,7 @@
             style="@style/MarkupToolbarButton"
             android:contentDescription="@string/crop"
             android:src="@drawable/ic_crop"
-            android:tint="@color/toolbar_tint"
+            android:tint="?attr/colorOnSurface"
             android:tooltipText="@string/crop" />
 
         <ImageButton
@@ -33,7 +33,7 @@
             style="@style/MarkupToolbarButton"
             android:contentDescription="@string/ink_text"
             android:src="@drawable/ic_text"
-            android:tint="@color/toolbar_tint"
+            android:tint="?attr/colorOnSurface"
             android:tooltipText="@string/ink_text" />
 
         <com.google.android.markup.PenButton
@@ -41,7 +41,7 @@
             style="@style/MarkupToolbarButton"
             android:layout_gravity="center"
             android:contentDescription="@string/ink_pen"
-            app:neutral_color="@color/toolbar_tint"
+            app:neutral_color="?attr/colorOnSurface"
             app:tool_name="@string/ink_pen"
             android:tooltipText="@string/ink_pen" />
 
@@ -50,7 +50,7 @@
             style="@style/MarkupToolbarButton"
             android:layout_gravity="center"
             android:contentDescription="@string/ink_highlighter"
-            app:neutral_color="@color/toolbar_tint"
+            app:neutral_color="?attr/colorOnSurface"
             app:tool_name="@string/ink_highlighter"
             android:tooltipText="@string/ink_highlighter" />
 
@@ -59,7 +59,7 @@
             style="@style/MarkupToolbarButton"
             android:contentDescription="@string/ink_eraser"
             android:src="@drawable/ic_eraser"
-            android:tint="@color/toolbar_tint"
+            android:tint="?attr/colorOnSurface"
             android:tooltipText="@string/ink_eraser" />
     </LinearLayout>
 </LinearLayout>
