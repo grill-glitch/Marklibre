@@ -30,7 +30,7 @@ class ToolbarFragment : Fragment() {
     private var highlightBg: Drawable? = null
     private var defaultToolBg: Drawable? = null
     private var onSurface = 0
-    private var onContainer = 0
+    private var onPrimary = 0
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -53,7 +53,9 @@ class ToolbarFragment : Fragment() {
         defaultToolBg = cropButton.background
         val ctx = requireContext()
         onSurface = ctx.themeColor(com.google.android.material.R.attr.colorOnSurface)
-        onContainer = ctx.themeColor(com.google.android.material.R.attr.colorOnPrimaryContainer)
+        // highlighted tools mimic the Save button: colorPrimary fill +
+        // colorOnPrimary icon (same as the Save button's text color)
+        onPrimary = ctx.themeColor(com.google.android.material.R.attr.colorOnPrimary)
 
         colorButtons = colorPanelChildren()
 
@@ -93,7 +95,7 @@ class ToolbarFragment : Fragment() {
     private fun applyButtonState(button: ImageButton, active: Boolean) {
         button.background = if (active) highlightBg else defaultToolBg
         button.imageTintList = ColorStateList.valueOf(
-            if (active) onContainer else onSurface
+            if (active) onPrimary else onSurface
         )
     }
 

@@ -40,7 +40,8 @@ class StickerActivity : AppCompatActivity() {
         )
         val defaultBg = pen.background
         val neutral = themeColor(com.google.android.material.R.attr.colorOnSurface)
-        val onContainer = themeColor(com.google.android.material.R.attr.colorOnPrimaryContainer)
+        // highlighted tools mimic the Save button (colorPrimary + colorOnPrimary)
+        val onPrimary = themeColor(com.google.android.material.R.attr.colorOnPrimary)
         var activeTool: ImageButton = pen
 
         fun highlight(active: ImageButton) {
@@ -50,7 +51,7 @@ class StickerActivity : AppCompatActivity() {
                 val tint = when {
                     // the highlighted brush itself shows the current ink color
                     active === btn && (btn === pen || btn === highlighter) -> canvas.color
-                    active === btn -> onContainer
+                    active === btn -> onPrimary
                     else -> neutral
                 }
                 btn.imageTintList = android.content.res.ColorStateList.valueOf(tint)
