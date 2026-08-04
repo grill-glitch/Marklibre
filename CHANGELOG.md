@@ -43,7 +43,10 @@ All notable changes to Marklibre are documented in this file.
   coordinates, taken time, camera); the fire-department button in its top
   right strips all metadata & location by re-encoding the file, and a
   help button beside it explains what metadata is and why removing it
-  matters.
+  matters. Two switches (persisted, default on) control whether sharing
+  and saving strip metadata automatically; the output always keeps the
+  source format (JPEG/PNG/WebP), and a JPEG keeps the source EXIF when
+  the switch is off.
 
 ### Fixed
 

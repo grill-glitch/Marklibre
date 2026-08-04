@@ -28,10 +28,13 @@ import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.materialswitch.MaterialSwitch
 import org.librelab.marklibre.text.TextEditorFragment
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.OutputStream
 
 class AnnotateActivity : AppCompatActivity() {
 
@@ -83,6 +86,10 @@ class AnnotateActivity : AppCompatActivity() {
 
     private var inputUri: Uri? = null
     private var isScreenshotSource = false
+
+    private val appPrefs by lazy {
+        getSharedPreferences("marklibre", Context.MODE_PRIVATE)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -373,7 +380,10 @@ class AnnotateActivity : AppCompatActivity() {
         Thread {
             try {
                 val flat = canvas.flattenFullRes()
-                val uri = saveToMediaStore(flat)
+                val uri = saveToMediaStore(
+                    flat,
+                    appPrefs.getBoolean("strip_on_save", true)
+                )
                 runOnUiThread {
                     progress.visibility = View.GONE
                     val result = Intent().apply {
@@ -393,14 +403,48 @@ class AnnotateActivity : AppCompatActivity() {
     }
 
     /**
-     * Writes the edited image into MediaStore (Pictures/Markup) so it shows up
-     * in the gallery. Returns the MediaStore URI (readable by any gallery app).
+     * Output format follows the source image (JPEG/PNG/WebP), so the edited
+     * image keeps the same container as the original.
      */
-    private fun saveToMediaStore(bm: Bitmap): Uri {
+    private fun sourceFormat(): Bitmap.CompressFormat {
+        val uri = inputUri ?: return Bitmap.CompressFormat.JPEG
+        val mime = runCatching { contentResolver.getType(uri) }.getOrNull()
+        val name = (uri.path ?: "").lowercase()
+        return when {
+            mime?.contains("png") == true || name.endsWith(".png") ->
+                Bitmap.CompressFormat.PNG
+            mime?.contains("webp") == true || name.endsWith(".webp") ->
+                Bitmap.CompressFormat.WEBP_LOSSY
+            else -> Bitmap.CompressFormat.JPEG
+        }
+    }
+
+    private fun formatMime(format: Bitmap.CompressFormat): String = when (format) {
+        Bitmap.CompressFormat.PNG -> "image/png"
+        Bitmap.CompressFormat.WEBP_LOSSY, Bitmap.CompressFormat.WEBP ->
+            "image/webp"
+        else -> "image/jpeg"
+    }
+
+    private fun formatExt(format: Bitmap.CompressFormat): String = when (format) {
+        Bitmap.CompressFormat.PNG -> "png"
+        Bitmap.CompressFormat.WEBP_LOSSY, Bitmap.CompressFormat.WEBP -> "webp"
+        else -> "jpg"
+    }
+
+    /**
+     * Writes the edited image into MediaStore (Pictures/Markup) so it shows up
+     * in the gallery. The output keeps the source's format; when
+     * [stripMetadata] is true it is written without EXIF (JPEG) / without any
+     * metadata (PNG, WebP), otherwise a JPEG keeps the source EXIF.
+     * Returns the MediaStore URI (readable by any gallery app).
+     */
+    private fun saveToMediaStore(bm: Bitmap, stripMetadata: Boolean): Uri {
         val ts = System.currentTimeMillis()
+        val format = sourceFormat()
         val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, "markup_$ts.png")
-            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(MediaStore.Images.Media.DISPLAY_NAME, "markup_$ts.${formatExt(format)}")
+            put(MediaStore.Images.Media.MIME_TYPE, formatMime(format))
             put(
                 MediaStore.Images.Media.RELATIVE_PATH,
                 Environment.DIRECTORY_PICTURES + "/Markup"
@@ -411,8 +455,13 @@ class AnnotateActivity : AppCompatActivity() {
         val uri = contentResolver.insert(collection, values)
             ?: throw IOException("MediaStore insert failed")
         contentResolver.openOutputStream(uri)?.use { out ->
-            if (!bm.compress(Bitmap.CompressFormat.PNG, 100, out)) {
-                throw IOException("PNG compress failed")
+            val ok = if (format == Bitmap.CompressFormat.JPEG && !stripMetadata) {
+                writeJpegWithSourceExif(bm, out)
+            } else {
+                bm.compress(format, 95, out)
+            }
+            if (!ok) {
+                throw IOException("compress failed")
             }
         } ?: throw IOException("MediaStore open failed")
         values.clear()
@@ -426,12 +475,18 @@ class AnnotateActivity : AppCompatActivity() {
         Thread {
             try {
                 val flat = canvas.flattenFullRes()
-                val file = writePng(flat, "edited")
+                val strip = appPrefs.getBoolean("strip_on_share", true)
+                val format = sourceFormat()
+                val file = when {
+                    format == Bitmap.CompressFormat.JPEG && !strip ->
+                        writeJpegWithExif(flat, "edited")
+                    else -> writeImage(flat, "edited", format)
+                }
                 runOnUiThread {
                     progress.visibility = View.GONE
                     val uri = FileProvider.getUriForFile(this, "org.librelab.marklibre", file)
                     val send = Intent(Intent.ACTION_SEND).apply {
-                        type = "image/png"
+                        type = formatMime(format)
                         putExtra(Intent.EXTRA_STREAM, uri)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
@@ -451,7 +506,10 @@ class AnnotateActivity : AppCompatActivity() {
         Thread {
             try {
                 val flat = canvas.flattenFullRes()
-                val uri = saveToMediaStore(flat)
+                val uri = saveToMediaStore(
+                    flat,
+                    appPrefs.getBoolean("strip_on_save", true)
+                )
                 runOnUiThread {
                     progress.visibility = View.GONE
                     val clip = ClipData.newUri(contentResolver, "markup", uri)
@@ -480,14 +538,78 @@ class AnnotateActivity : AppCompatActivity() {
         }
     }
 
-    private fun writePng(bm: Bitmap, subdir: String): File {
+    private fun writePng(bm: Bitmap, subdir: String): File =
+        writeImage(bm, subdir, Bitmap.CompressFormat.PNG)
+
+    private fun writeImage(bm: Bitmap, subdir: String, format: Bitmap.CompressFormat): File {
         val dir = File(cacheDir, subdir)
         dir.mkdirs()
-        val file = File(dir, "markup_${System.currentTimeMillis()}.png")
+        val file = File(dir, "markup_${System.currentTimeMillis()}.${formatExt(format)}")
         FileOutputStream(file).use { out ->
-            bm.compress(Bitmap.CompressFormat.PNG, 100, out)
+            bm.compress(format, 95, out)
         }
         return file
+    }
+
+    private fun writeJpegWithExif(bm: Bitmap, subdir: String): File {
+        val dir = File(cacheDir, subdir)
+        dir.mkdirs()
+        val file = File(dir, "markup_${System.currentTimeMillis()}.jpg")
+        FileOutputStream(file).use { out ->
+            writeJpegWithSourceExif(bm, out)
+        }
+        return file
+    }
+
+    /**
+     * Compresses [bm] to JPEG and splices the source image's raw APP1 (Exif)
+     * segment right after the SOI marker, so the output keeps the original
+     * metadata. Returns false on failure (caller should fall back).
+     */
+    private fun writeJpegWithSourceExif(bm: Bitmap, out: OutputStream): Boolean {
+        val jpeg = ByteArrayOutputStream()
+        if (!bm.compress(Bitmap.CompressFormat.JPEG, 95, jpeg)) return false
+        val bytes = jpeg.toByteArray()
+        val app1 = readJpegApp1(inputUri)
+        return try {
+            if (app1 == null) {
+                out.write(bytes)
+            } else {
+                out.write(bytes, 0, 2)   // SOI
+                out.write(app1)          // FFE1 + len + "Exif\0\0" + TIFF
+                out.write(bytes, 2, bytes.size - 2)
+            }
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /** Raw APP1 (Exif) segment of a JPEG source, or null (not JPEG / none). */
+    private fun readJpegApp1(uri: Uri?): ByteArray? {
+        val data = uri?.let {
+            runCatching {
+                contentResolver.openInputStream(it)?.use { s -> s.readBytes() }
+            }.getOrNull()
+        } ?: return null
+        var i = 2
+        while (i + 4 <= data.size) {
+            if (data[i] != 0xFF.toByte()) break
+            val marker = data[i + 1].toInt() and 0xFF
+            if (marker == 0xD8) { i += 2; continue }        // SOI
+            if (marker == 0xD9 || marker == 0xDA) return null // EOI / SOS: no APP1
+            val len = ((data[i + 2].toInt() and 0xFF) shl 8) or (data[i + 3].toInt() and 0xFF)
+            if (marker == 0xE1) {
+                val seg = data.copyOfRange(i, i + 2 + len)
+                return if (seg.size > 10 && String(seg, 4, 6, Charsets.US_ASCII) == "Exif\u0000\u0000") {
+                    seg
+                } else {
+                    null
+                }
+            }
+            i += 2 + len
+        }
+        return null
     }
 
     // ---------- quick reference (metadata + location) ----------
@@ -497,6 +619,16 @@ class AnnotateActivity : AppCompatActivity() {
         val view = layoutInflater.inflate(R.layout.quick_reference_sheet, null)
         sheet.setContentView(view)
         fillMetadata(view)
+        val stripShare = view.findViewById<MaterialSwitch>(R.id.strip_on_share_switch)
+        val stripSave = view.findViewById<MaterialSwitch>(R.id.strip_on_save_switch)
+        stripShare.isChecked = appPrefs.getBoolean("strip_on_share", true)
+        stripSave.isChecked = appPrefs.getBoolean("strip_on_save", true)
+        stripShare.setOnCheckedChangeListener { _, c ->
+            appPrefs.edit().putBoolean("strip_on_share", c).apply()
+        }
+        stripSave.setOnCheckedChangeListener { _, c ->
+            appPrefs.edit().putBoolean("strip_on_save", c).apply()
+        }
         view.findViewById<View>(R.id.help_button).setOnClickListener {
             AlertDialog.Builder(this)
                 .setTitle(R.string.metadata_help_title)

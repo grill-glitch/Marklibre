@@ -99,4 +99,24 @@
     <TextView
         android:id="@+id/meta_camera_value"
         style="@style/MetadataValue" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="16dp"
+        android:background="?attr/colorOutlineVariant" />
+
+    <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/strip_on_share_switch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/strip_on_share" />
+
+    <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/strip_on_save_switch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/strip_on_save" />
 </LinearLayout>
