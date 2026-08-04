@@ -97,6 +97,16 @@ class ToolbarFragment : Fragment() {
 
     /** Pen width range: 2..16 dp (slider progress 0..14). */
     private val minPenWidth = 2f
+    private val maxPenWidth = 16f
+
+    /** Highlighter width range: 8..32 dp (slider progress 0..24). */
+    private val minHighlighterWidth = 8f
+    private val maxHighlighterWidth = 32f
+
+    /** Current widths per tool, kept in sync with the canvas. */
+    private var currentPenWidth = 8f
+    private var currentHighlighterWidth = 24f
+    private var currentTool = InkTool.PEN
 
     /** Current ink color, mirrored into the width preview bar. */
     private var currentInkColor: Int = Color.BLACK
@@ -173,13 +183,28 @@ class ToolbarFragment : Fragment() {
             cb.setOnClickListener { callbacks?.onColorSelected(cb.color) }
         }
 
-        // pen width slider: 2..16 dp, live preview bar mirrors the width
-        penWidthSlider.progress = (8f - minPenWidth).toInt()
+        // width slider: 2..16 dp for the pen, 8..32 dp for the highlighter;
+        // live preview bar mirrors the width
+        currentTool = InkTool.PEN
+        penWidthSlider.max = (maxPenWidth - minPenWidth).toInt()
+        penWidthSlider.progress = (currentPenWidth - minPenWidth).toInt()
         updateWidthPreview()
         penWidthSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
                 updateWidthPreview()
-                if (fromUser) callbacks?.onWidthSelected(minPenWidth + progress)
+                if (fromUser) {
+                    val w = if (currentTool == InkTool.HIGHLIGHTER) {
+                        minHighlighterWidth + progress
+                    } else {
+                        minPenWidth + progress
+                    }
+                    if (currentTool == InkTool.HIGHLIGHTER) {
+                        currentHighlighterWidth = w
+                    } else {
+                        currentPenWidth = w
+                    }
+                    callbacks?.onWidthSelected(w)
+                }
             }
 
             override fun onStartTrackingTouch(sb: SeekBar) {}
@@ -224,8 +249,21 @@ class ToolbarFragment : Fragment() {
         highlighterButton.showColor = false
         penButton.active = tool == InkTool.PEN
         highlighterButton.active = tool == InkTool.HIGHLIGHTER
-        // the pen-width row is a pen-only setting
-        penWidthRow.visibility = if (tool == InkTool.PEN) View.VISIBLE else View.GONE
+        // the width row is shared by the pen and the highlighter; the slider
+        // range and value switch with the tool
+        currentTool = tool
+        penWidthRow.visibility =
+            if (tool == InkTool.PEN || tool == InkTool.HIGHLIGHTER) View.VISIBLE else View.GONE
+        if (tool == InkTool.HIGHLIGHTER) {
+            penWidthSlider.max = (maxHighlighterWidth - minHighlighterWidth).toInt()
+            penWidthSlider.progress =
+                (currentHighlighterWidth - minHighlighterWidth).toInt().coerceIn(0, (maxHighlighterWidth - minHighlighterWidth).toInt())
+        } else if (tool == InkTool.PEN) {
+            penWidthSlider.max = (maxPenWidth - minPenWidth).toInt()
+            penWidthSlider.progress =
+                (currentPenWidth - minPenWidth).toInt().coerceIn(0, (maxPenWidth - minPenWidth).toInt())
+        }
+        updateWidthPreview()
 
         // tool-switch animation: the newly clicked tool gets a dim highlight
         // immediately, while the bright highlight slides over to it
@@ -380,14 +418,32 @@ class ToolbarFragment : Fragment() {
 
     /** Highlights the pen width option matching [widthDp]. */
     fun setSelectedPenWidth(widthDp: Float) {
-        penWidthSlider.progress = (widthDp - minPenWidth).toInt().coerceIn(0, 14)
+        currentPenWidth = widthDp
+        if (currentTool == InkTool.PEN) {
+            penWidthSlider.progress = (widthDp - minPenWidth).toInt().coerceIn(0, 14)
+        }
+        updateWidthPreview()
+    }
+
+    /** Syncs the slider to the highlighter's width (used on start-up). */
+    fun setSelectedHighlighterWidth(widthDp: Float) {
+        currentHighlighterWidth = widthDp
+        if (currentTool == InkTool.HIGHLIGHTER) {
+            penWidthSlider.progress =
+                (widthDp - minHighlighterWidth).toInt()
+                    .coerceIn(0, (maxHighlighterWidth - minHighlighterWidth).toInt())
+        }
         updateWidthPreview()
     }
 
     /** Renders the live width preview bar (height = current width, rounded). */
     private fun updateWidthPreview() {
-        val widthDp = minPenWidth + penWidthSlider.progress
-        val h = (widthDp * 2f * resources.displayMetrics.density).coerceIn(4f, 200f)
+        val widthDp = if (currentTool == InkTool.HIGHLIGHTER) {
+            minHighlighterWidth + penWidthSlider.progress
+        } else {
+            minPenWidth + penWidthSlider.progress
+        }
+        val h = (widthDp * 1.5f * resources.displayMetrics.density).coerceIn(4f, 130f)
         penWidthPreview.layoutParams = penWidthPreview.layoutParams.apply { height = h.toInt() }
         val stroke = 1.5f * resources.displayMetrics.density
         penWidthPreview.background = GradientDrawable().apply {

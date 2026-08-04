@@ -2,6 +2,15 @@
 
 All notable changes to Marklibre are documented in this file.
 
+## [1.2.1] - 2026-08-05
+
+### Added
+
+- **Highlighter width** — the width slider now also applies to the
+  highlighter (8-32 dp, default 24 dp, thicker than the pen's 2-16 dp);
+  the slider range and value switch when you swap between pen and
+  highlighter, and each tool remembers its own width.
+
 ## [1.2.0] - 2026-08-05
 
 ### Added

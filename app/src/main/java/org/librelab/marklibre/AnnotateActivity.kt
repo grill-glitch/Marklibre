@@ -200,7 +200,11 @@ class AnnotateActivity : AppCompatActivity() {
             }
 
             override fun onWidthSelected(widthDp: Float) {
-                canvas.penWidthDp = widthDp
+                if (canvas.tool == InkTool.HIGHLIGHTER) {
+                    canvas.highlighterWidthDp = widthDp
+                } else {
+                    canvas.penWidthDp = widthDp
+                }
             }
 
             override fun onPickColorRequested() {
@@ -246,6 +250,7 @@ class AnnotateActivity : AppCompatActivity() {
         toolbarFragment.setActiveTool(InkTool.PEN)
         toolbarFragment.setSelectedColor(canvas.color)
         toolbarFragment.setSelectedPenWidth(canvas.penWidthDp)
+        toolbarFragment.setSelectedHighlighterWidth(canvas.highlighterWidthDp)
     }
 
     private fun setupTextEditor() {

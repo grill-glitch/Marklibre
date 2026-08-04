@@ -60,6 +60,9 @@ class DrawingCanvasView @JvmOverloads constructor(
     /** Pen stroke width in dp (user-selectable via the width row). */
     var penWidthDp: Float = 8f
 
+    /** Highlighter stroke width in dp (user-selectable via the width row). */
+    var highlighterWidthDp: Float = 24f
+
     private var source: Bitmap? = null
     private val elements = ArrayList<InkElement>()
     private val undoStack = ArrayDeque<CanvasOp>()
@@ -1094,7 +1097,7 @@ class DrawingCanvasView @JvmOverloads constructor(
         activeColor = color
         activeWidth = when (activeStyle) {
             StrokeStyle.PEN -> penWidthDp * density
-            StrokeStyle.HIGHLIGHTER -> 26f * density
+            StrokeStyle.HIGHLIGHTER -> highlighterWidthDp * density
             StrokeStyle.ERASER -> 30f * density
         }
         lastX = event.x
