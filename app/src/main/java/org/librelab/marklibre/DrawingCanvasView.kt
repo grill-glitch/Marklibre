@@ -673,11 +673,18 @@ class DrawingCanvasView @JvmOverloads constructor(
         invalidate()
     }
 
-    /** Commits the gesture transform into element coordinates and stops. */
+    /** Commits the gesture transform into the image matrix + element coordinates. */
     private fun endCanvasGesture() {
         if (!gestureActive) return
         gestureActive = false
         if (!gestureMatrix.isIdentity) {
+            // Fold the gesture into the persistent fit matrix (M_new = G * M_old)
+            // so the zoom/pan survives the fingers lifting, then migrate the
+            // elements into the new view space so ink stays glued to the image.
+            // NOTE: preConcat(other) computes M*other (gesture applied in SOURCE
+            // space, wrong); postConcat computes other*M = G*B (gesture on top).
+            matrix.postConcat(gestureMatrix)
+            matrix.invert(inverse)
             val v = FloatArray(9)
             gestureMatrix.getValues(v)
             val s = hypot(v[Matrix.MSCALE_X], v[Matrix.MSKEW_Y])
