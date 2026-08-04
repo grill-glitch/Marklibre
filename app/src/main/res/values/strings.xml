@@ -2,6 +2,18 @@
 <resources>
     <string name="markup">Marklibre</string>
     <string name="save">Save</string>
+    <string name="metadata_button">Metadata</string>
+    <string name="metadata_title">Metadata</string>
+    <string name="metadata_source">Source</string>
+    <string name="metadata_dimensions">Dimensions</string>
+    <string name="metadata_modified">Last modified</string>
+    <string name="metadata_location">Location</string>
+    <string name="metadata_exif_time">Taken</string>
+    <string name="metadata_camera">Camera</string>
+    <string name="metadata_clear">Remove metadata and location</string>
+    <string name="metadata_cleared">Metadata and location removed</string>
+    <string name="metadata_none">None</string>
+    <string name="metadata_location_removed">Location removed</string>
     <string name="share">Share</string>
     <string name="copy">Copy</string>
     <string name="delete">Delete</string>

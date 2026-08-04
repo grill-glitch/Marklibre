@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material Symbols 'local fire department' (outlined), from the user's SVG, Y+960 normalized. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="960" android:viewportHeight="960">
+    <path android:fillColor="#FF000000"
+        android:pathData="M 240 560.0q 0 52 21 98.5t 60 81.5q -1 -5 -1 -9v -9 q 0 -32 12 -60t 35 -51l 113 -111 113 111q 23 23 35 51t 12 60v 9 q 0 4 -1 9 39 -35 60 -81.5t 21 -98.5q 0 -50 -18.5 -94.5T 648 386.0q -20 13 -42 19.5t -45 6.5q -62 0 -107.5 -41T 401 270.0q -39 33 -69 68.5t -50.5 72Q 261 447.0 250.5 485.0T 240 560.0Zm 240 52 -57 56q -11 11 -17 25t -6 29q 0 32 23.5 55t 56.5 23q 33 0 56.5 -23t 23.5 -55q 0 -16 -6 -29.5T 537 668.0l -57 -56Zm 0 -492v 132 q 0 34 23.5 57t 57.5 23q 18 0 33.5 -7.5T 622 302.0l 18 -22q 74 42 117 117t 43 163q 0 134 -93 227T 480 880.0q -134 0 -227 -93t -93 -227q 0 -129 86.5 -245T 480 120.0Z" />
+</vector>

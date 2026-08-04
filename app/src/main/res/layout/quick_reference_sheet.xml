@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Quick reference bottom sheet: image metadata + location, with the
+     fire-department button (top right) that strips metadata & location. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/metadata_title"
+            android:textAppearance="?attr/textAppearanceTitleLarge" />
+
+        <ImageButton
+            android:id="@+id/fire_department_button"
+            style="@style/MarkupToolbarButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/metadata_clear"
+            android:padding="8dp"
+            android:src="@drawable/ic_fire_department"
+            android:tint="?attr/colorOnSurface"
+            android:tooltipText="@string/metadata_clear" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/meta_source_label"
+        style="@style/MetadataLabel"
+        android:text="@string/metadata_source" />
+
+    <TextView
+        android:id="@+id/meta_source_value"
+        style="@style/MetadataValue" />
+
+    <TextView
+        android:id="@+id/meta_dimensions_label"
+        style="@style/MetadataLabel"
+        android:text="@string/metadata_dimensions" />
+
+    <TextView
+        android:id="@+id/meta_dimensions_value"
+        style="@style/MetadataValue" />
+
+    <TextView
+        android:id="@+id/meta_modified_label"
+        style="@style/MetadataLabel"
+        android:text="@string/metadata_modified" />
+
+    <TextView
+        android:id="@+id/meta_modified_value"
+        style="@style/MetadataValue" />
+
+    <TextView
+        android:id="@+id/meta_location_label"
+        style="@style/MetadataLabel"
+        android:text="@string/metadata_location" />
+
+    <TextView
+        android:id="@+id/meta_location_value"
+        style="@style/MetadataValue" />
+
+    <TextView
+        android:id="@+id/meta_taken_label"
+        style="@style/MetadataLabel"
+        android:text="@string/metadata_exif_time" />
+
+    <TextView
+        android:id="@+id/meta_taken_value"
+        style="@style/MetadataValue" />
+
+    <TextView
+        android:id="@+id/meta_camera_label"
+        style="@style/MetadataLabel"
+        android:text="@string/metadata_camera" />
+
+    <TextView
+        android:id="@+id/meta_camera_value"
+        style="@style/MetadataValue" />
+</LinearLayout>

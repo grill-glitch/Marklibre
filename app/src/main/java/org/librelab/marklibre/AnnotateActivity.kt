@@ -10,6 +10,7 @@ import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.RectF
+import android.media.ExifInterface
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -18,12 +19,14 @@ import android.view.View
 import android.view.WindowInsets
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import org.librelab.marklibre.text.TextEditorFragment
 import java.io.File
@@ -149,6 +152,7 @@ class AnnotateActivity : AppCompatActivity() {
         saveButton.setOnClickListener { doSave() }
         findViewById<View>(R.id.share).setOnClickListener { doShare() }
         findViewById<View>(R.id.delete).setOnClickListener { doDelete() }
+        findViewById<View>(R.id.quick_reference_button).setOnClickListener { showQuickReference() }
         undoButton.setOnClickListener { canvas.undo() }
         redoButton.setOnClickListener { canvas.redo() }
     }
@@ -484,5 +488,119 @@ class AnnotateActivity : AppCompatActivity() {
             bm.compress(Bitmap.CompressFormat.PNG, 100, out)
         }
         return file
+    }
+
+    // ---------- quick reference (metadata + location) ----------
+
+    private fun showQuickReference() {
+        val sheet = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.quick_reference_sheet, null)
+        sheet.setContentView(view)
+        fillMetadata(view)
+        view.findViewById<View>(R.id.fire_department_button).setOnClickListener {
+            if (stripMetadata()) {
+                fillMetadata(view)
+                Toast.makeText(this, R.string.metadata_cleared, Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, R.string.image_save_failed, Toast.LENGTH_SHORT).show()
+            }
+        }
+        sheet.show()
+    }
+
+    private fun fillMetadata(view: View) {
+        val m = readMetadata()
+        fun set(id: Int, value: String) {
+            view.findViewById<TextView>(id).text = value
+        }
+        set(R.id.meta_source_value, m["source"] ?: getString(R.string.metadata_none))
+        set(R.id.meta_dimensions_value, m["dimensions"] ?: getString(R.string.metadata_none))
+        set(R.id.meta_modified_value, m["modified"] ?: getString(R.string.metadata_none))
+        set(R.id.meta_location_value, m["location"] ?: getString(R.string.metadata_none))
+        set(R.id.meta_taken_value, m["taken"] ?: getString(R.string.metadata_none))
+        set(R.id.meta_camera_value, m["camera"] ?: getString(R.string.metadata_none))
+    }
+
+    private fun readMetadata(): Map<String, String> {
+        val out = LinkedHashMap<String, String>()
+        val uri = inputUri ?: return out
+        // source name: display name when available, else the raw URI
+        val displayName = runCatching {
+            contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null)
+                ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        }.getOrNull()
+        out["source"] = displayName ?: uri.toString()
+
+        // dimensions from the decoded bounds (cheap, no full decode)
+        runCatching {
+            contentResolver.openInputStream(uri)?.use { input ->
+                val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeStream(input, null, opts)
+                if (opts.outWidth > 0) {
+                    out["dimensions"] = "${opts.outWidth} × ${opts.outHeight}"
+                }
+            }
+        }
+
+        // last modified: file path or MediaStore column
+        if (uri.scheme == "file") {
+            val lm = runCatching { uri.path?.let { File(it).lastModified() } }.getOrNull() ?: 0L
+            if (lm > 0) {
+                out["modified"] = java.text.DateFormat.getDateTimeInstance()
+                    .format(java.util.Date(lm))
+            }
+        } else {
+            runCatching {
+                contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DATE_MODIFIED), null, null, null)
+                    ?.use { c ->
+                        if (c.moveToFirst()) {
+                            val secs = c.getLong(0)
+                            if (secs > 0) {
+                                out["modified"] = java.text.DateFormat.getDateTimeInstance()
+                                    .format(java.util.Date(secs * 1000L))
+                            }
+                        }
+                    }
+            }
+        }
+
+        // EXIF: location (GPS), taken time, camera
+        runCatching {
+            contentResolver.openInputStream(uri)?.use { input ->
+                val exif = ExifInterface(input)
+                val ll = FloatArray(2)
+                if (exif.getLatLong(ll)) {
+                    out["location"] = String.format("%.5f, %.5f", ll[0], ll[1])
+                }
+                exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)?.takeIf { it.isNotBlank() }
+                    ?.let { out["taken"] = it }
+                val make = exif.getAttribute(ExifInterface.TAG_MAKE)?.trim()
+                val model = exif.getAttribute(ExifInterface.TAG_MODEL)?.trim()
+                val camera = listOfNotNull(make, model).distinct().joinToString(" ")
+                if (camera.isNotBlank()) out["camera"] = camera
+            }
+        }
+        return out
+    }
+
+    /**
+     * Strips metadata & location by re-encoding the source bitmap (decoded
+     * pixels never carry EXIF) back over the original file. Returns true on
+     * success.
+     */
+    private fun stripMetadata(): Boolean {
+        val uri = inputUri ?: return false
+        val bm = decodeUri(uri) ?: return false
+        return try {
+            val out = if (uri.scheme == "file") {
+                val f = File(uri.path ?: return false)
+                FileOutputStream(f)
+            } else {
+                contentResolver.openOutputStream(uri) ?: return false
+            }
+            out.use { bm.compress(Bitmap.CompressFormat.JPEG, 95, it) }
+        } catch (e: Exception) {
+            false
+        }
     }
 }

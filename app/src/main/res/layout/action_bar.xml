@@ -19,6 +19,20 @@
         android:textColor="?attr/colorOnPrimary" />
 
     <ImageButton
+        android:id="@+id/quick_reference_button"
+        style="@style/MarkupToolbarButton"
+        android:layout_width="@dimen/ink_lite_toolbar_button_size"
+        android:layout_height="@dimen/ink_lite_toolbar_button_size"
+        android:layout_alignWithParentIfMissing="true"
+        android:layout_toEndOf="@id/save"
+        android:background="@drawable/action_button_background"
+        android:contentDescription="@string/metadata_button"
+        android:padding="12dp"
+        android:src="@drawable/ic_quick_reference"
+        android:tint="?attr/colorOnSurface"
+        android:tooltipText="@string/metadata_button" />
+
+    <ImageButton
         android:id="@+id/undo_button"
         style="@style/MarkupToolbarButton"
         android:layout_width="@dimen/ink_lite_toolbar_button_size"

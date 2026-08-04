@@ -38,6 +38,10 @@ All notable changes to Marklibre are documented in this file.
   color dot closes the panel.
 - Tapping the pen button toggles the color panel on/off; if the palette
   panel is open it closes first.
+- **Metadata** — a button next to Save opens a bottom sheet with the
+  image's metadata and location (source, dimensions, last modified, GPS
+  coordinates, taken time, camera); the fire-department button in its top
+  right strips all metadata & location by re-encoding the file.
 
 ### Fixed
 
