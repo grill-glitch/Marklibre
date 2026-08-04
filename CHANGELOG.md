@@ -36,6 +36,8 @@ All notable changes to Marklibre are documented in this file.
   Cancel button that restores the color the picker opened with, and an
   eyedropper that picks a color straight from the image; tapping a preset
   color dot closes the panel.
+- Tapping the pen button toggles the color panel on/off; if the palette
+  panel is open it closes first.
 - Fix: preset color dots stopped working when the pen width row was added
   to the color panel - the dot collector only looked at the panel's direct
   children (the row container), so no dot had a click listener; it now

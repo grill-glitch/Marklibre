@@ -161,11 +161,22 @@ class AnnotateActivity : AppCompatActivity() {
                     enterCropMode()
                     return
                 }
+                val wasPen = canvas.tool == InkTool.PEN
                 canvas.tool = tool
                 toolbarFragment.setActiveTool(tool)
-                toolbarFragment.setColorPanelVisible(
-                    tool == InkTool.PEN || tool == InkTool.HIGHLIGHTER
-                )
+                if (tool == InkTool.PEN) {
+                    if (wasPen) {
+                        // re-tapping the pen toggles the color panel (and
+                        // closes the palette panel first if it is open)
+                        toolbarFragment.toggleColorPanel()
+                    } else {
+                        toolbarFragment.setColorPanelVisible(true)
+                    }
+                } else {
+                    toolbarFragment.setColorPanelVisible(
+                        tool == InkTool.HIGHLIGHTER
+                    )
+                }
             }
 
             override fun onColorSelected(color: Int) {

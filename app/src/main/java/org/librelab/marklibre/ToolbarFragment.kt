@@ -319,6 +319,21 @@ class ToolbarFragment : Fragment() {
         colorPanel.visibility = if (visible) View.VISIBLE else View.GONE
     }
 
+    /**
+     * Pen-button behavior: closes the palette panel first, then toggles the
+     * color panel. Returns true when the panel ended up visible.
+     */
+    fun toggleColorPanel(): Boolean {
+        collapsePalette()
+        return if (colorPanel.visibility == View.VISIBLE) {
+            colorPanel.visibility = View.GONE
+            false
+        } else {
+            colorPanel.visibility = View.VISIBLE
+            true
+        }
+    }
+
     fun setSelectedColor(color: Int) {
         for (cb in colorButtons) {
             cb.checked = cb.color == color
