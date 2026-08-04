@@ -26,6 +26,12 @@ All notable changes to Marklibre are documented in this file.
   color picker with hue / saturation / brightness / opacity sliders and a
   hex field; picked colors (with their opacity) apply to the pen and text,
   and the palette button shows the custom color while selected.
+- The palette picker is a popup anchored to the palette button (not a
+  modal dialog): it shifts up when the keyboard opens, BACK hides the
+  keyboard first and then dismisses the popup, and dragging any slider
+  away from a black/gray start color restores full saturation/brightness.
+- Fix: BACK with unsaved edits now asks "Discard changes?" instead of
+  dropping the annotations silently.
 
 ## [1.0.0] - 2026-07-31
 

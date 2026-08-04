@@ -301,4 +301,7 @@ class ToolbarFragment : Fragment() {
             setColor(currentInkColor)
         }
     }
+
+    /** Anchor for the palette popup (the palette button itself). */
+    fun paletteAnchor(): View = paletteButton
 }

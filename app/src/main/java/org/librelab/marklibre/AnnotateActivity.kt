@@ -151,7 +151,7 @@ class AnnotateActivity : AppCompatActivity() {
                 PaletteDialog(this@AnnotateActivity, canvas.color) { color ->
                     canvas.color = color
                     toolbarFragment.setSelectedColor(color)
-                }.show()
+                }.show(toolbarFragment.paletteAnchor())
             }
         }
         canvas.listener = object : DrawingCanvasView.Listener {
@@ -447,6 +447,16 @@ class AnnotateActivity : AppCompatActivity() {
         }
         if (cropOverlay.visibility == View.VISIBLE) {
             exitCropMode()
+            return
+        }
+        if (canvas.hasEdits()) {
+            // BACK would drop unsaved annotations - ask first
+            AlertDialog.Builder(this)
+                .setTitle(R.string.discard_changes)
+                .setMessage(R.string.discard_changes_message)
+                .setPositiveButton(R.string.discard) { _, _ -> super.onBackPressed() }
+                .setNegativeButton(R.string.crop_cancel, null)
+                .show()
             return
         }
         super.onBackPressed()

@@ -5,17 +5,21 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.widget.EditText
+import android.widget.PopupWindow
 import android.widget.SeekBar
-import androidx.appcompat.app.AlertDialog
 import kotlin.math.roundToInt
 
 /**
- * Custom color picker: hue / saturation / brightness / opacity sliders plus
- * a hex field, all kept in sync. Returns an ARGB color (alpha comes from the
- * opacity slider) via [onColorPicked].
+ * Custom color picker shown as a popup anchored to the palette button
+ * (non-modal, dismisses on outside tap). Hue / saturation / brightness /
+ * opacity sliders plus a hex field, all kept in sync. Returns an ARGB
+ * color (alpha from the opacity slider) via [onColorPicked].
  */
 class PaletteDialog(
     private val context: Context,
@@ -29,8 +33,8 @@ class PaletteDialog(
     private var alpha = 255
     private var syncing = false
 
-    fun show() {
-        val view = LayoutInflater.from(context).inflate(R.layout.palette_dialog, null)
+    fun show(anchor: View) {
+        val view = LayoutInflater.from(context).inflate(R.layout.palette_popup, null)
         val preview = view.findViewById<View>(R.id.palette_preview)
         val hueBar = view.findViewById<SeekBar>(R.id.palette_hue)
         val satBar = view.findViewById<SeekBar>(R.id.palette_saturation)
@@ -128,7 +132,19 @@ class PaletteDialog(
             override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
                 if (syncing || !fromUser) return
                 when (sb) {
-                    hueBar -> hue = progress / 100f * 360f
+                    hueBar -> {
+                        hue = progress / 100f * 360f
+                        // black/gray colors have sat=0/val=0, which would keep
+                        // every hue black - restore color when the user drags hue
+                        if (saturation < 0.05f) {
+                            saturation = 1f
+                            satBar.progress = 100
+                        }
+                        if (brightness < 0.05f) {
+                            brightness = 1f
+                            valBar.progress = 100
+                        }
+                    }
                     satBar -> saturation = progress / 100f
                     valBar -> brightness = progress / 100f
                     alphaBar -> alpha = (progress / 100f * 255f).roundToInt()
@@ -160,11 +176,89 @@ class PaletteDialog(
             }
         })
 
-        AlertDialog.Builder(context)
-            .setTitle(R.string.palette)
-            .setView(view)
-            .setPositiveButton(R.string.palette_apply) { _, _ -> onColorPicked(currentColor()) }
-            .setNegativeButton(R.string.crop_cancel, null)
-            .show()
+        // measure at the fixed popup width before showing so we can anchor
+        // above the button
+        val density = context.resources.displayMetrics.density
+        val popupWidth = (300f * density).toInt()
+        view.measure(
+            View.MeasureSpec.makeMeasureSpec(popupWidth, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val popup = PopupWindow(
+            view,
+            popupWidth,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            true
+        ).apply {
+            isFocusable = true
+            isOutsideTouchable = true
+            setBackgroundDrawable(
+                GradientDrawable().apply {
+                    cornerRadius = 16f * density
+                    setColor(context.themeColor(com.google.android.material.R.attr.colorSurfaceContainer))
+                }
+            )
+        }
+        // BACK must not reach the activity: hide the IME first, then dismiss
+        // the popup (otherwise BACK closes the whole editor)
+        view.isFocusable = true
+        view.setOnKeyListener { _, keyCode, _ ->
+            if (keyCode == KeyEvent.KEYCODE_BACK) {
+                val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                if (imm?.isAcceptingText == true) {
+                    hexEdit.clearFocus()
+                    imm.hideSoftInputFromWindow(hexEdit.windowToken, 0)
+                } else {
+                    popup.dismiss()
+                }
+                true
+            } else {
+                false
+            }
+        }
+        // pop centered above the palette button
+        val xoff = -(popupWidth - anchor.width) / 2
+        val yoff = -(view.measuredHeight + anchor.height + (8f * density)).toInt()
+        popup.showAsDropDown(anchor, xoff, yoff)
+
+        // ADJUST_PAN does not move PopupWindows, so shift the popup up by
+        // the keyboard height manually whenever the IME shows (and back on
+        // dismiss) - otherwise the keyboard covers the hex field / apply.
+        var panned = false
+        val root = anchor.rootView
+        val layoutListener = ViewTreeObserver.OnGlobalLayoutListener {
+            val rect = android.graphics.Rect()
+            root.getWindowVisibleDisplayFrame(rect)
+            val keyboardHeight = root.height - rect.bottom
+            if (keyboardHeight > 100) {
+                if (!panned) {
+                    // shift up by the keyboard height, but never above the
+                    // status bar (popup top in screen coords = anchor.bottom + y);
+                    // rect.top is 0 when the status bar is a transparent overlay
+                    val statusBar = if (rect.top > 0) {
+                        rect.top
+                    } else {
+                        val res = context.resources
+                        val id = res.getIdentifier("status_bar_height", "dimen", "android")
+                        if (id > 0) res.getDimensionPixelSize(id) else 0
+                    }
+                    val minY = statusBar - anchor.bottom
+                    popup.update(xoff, maxOf(yoff - keyboardHeight, minY), -1, -1)
+                    panned = true
+                }
+            } else if (panned) {
+                popup.update(xoff, yoff, -1, -1)
+                panned = false
+            }
+        }
+        root.viewTreeObserver.addOnGlobalLayoutListener(layoutListener)
+        popup.setOnDismissListener {
+            root.viewTreeObserver.removeOnGlobalLayoutListener(layoutListener)
+        }
+
+        view.findViewById<View>(R.id.palette_apply).setOnClickListener {
+            popup.dismiss()
+            onColorPicked(currentColor())
+        }
     }
 }

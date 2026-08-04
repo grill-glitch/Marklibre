@@ -148,6 +148,9 @@ class DrawingCanvasView @JvmOverloads constructor(
 
     fun isStickerMode(): Boolean = source == null
 
+    /** True when there are unsaved edits (the undo stack is non-empty). */
+    fun hasEdits(): Boolean = undoStack.isNotEmpty()
+
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         inkLayer = Bitmap.createBitmap(max(w, 1), max(h, 1), Bitmap.Config.ARGB_8888)
