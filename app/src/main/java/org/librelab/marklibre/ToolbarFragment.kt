@@ -8,6 +8,7 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.InsetDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -256,15 +257,28 @@ class ToolbarFragment : Fragment() {
         updateWidthPreview()
     }
 
-    /** Palette button: neutral ring idle; filled with the custom color when selected. */
+    /** Palette button: ring sized like the color dots; tinted like toolbar icons. */
     private fun updatePaletteButton() {
         val selected = colorButtons.none { it.color == currentInkColor }
         val d = resources.displayMetrics.density
-        paletteButton.background = GradientDrawable().apply {
+        val inset = (8f * d).toInt()
+        val oval = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             setStroke((1.5f * d).toInt(), 0x669E9E9E.toInt())
             setColor(if (selected) currentInkColor else Color.TRANSPARENT)
         }
+        paletteButton.background = InsetDrawable(oval, inset, inset, inset, inset)
+        // idle: follow the theme like the other toolbar icons; selected:
+        // pick black/white by the fill's luminance so the icon always reads
+        val tint = if (!selected) {
+            requireContext().themeColor(com.google.android.material.R.attr.colorOnSurface)
+        } else {
+            val lum = 0.299f * Color.red(currentInkColor) +
+                0.587f * Color.green(currentInkColor) +
+                0.114f * Color.blue(currentInkColor)
+            if (lum > 140f) Color.BLACK else Color.WHITE
+        }
+        paletteButton.imageTintList = ColorStateList.valueOf(tint)
     }
 
     /** Highlights the pen width option matching [widthDp]. */
