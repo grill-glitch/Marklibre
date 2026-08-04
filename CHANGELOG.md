@@ -2,6 +2,23 @@
 
 All notable changes to Marklibre are documented in this file.
 
+## [1.2.0] - 2026-08-05
+
+### Added
+
+- **Metadata** — a button next to Save opens a bottom sheet with the
+  image's metadata and location (source, dimensions, last modified, GPS
+  coordinates, taken time, camera); the fire-department button in its top
+  right strips all metadata & location by re-encoding the file, and a
+  help button beside it explains what metadata is and why removing it
+  matters. Two switches (persisted, default on) control whether sharing
+  and saving strip metadata automatically; the output always keeps the
+  source format (JPEG/PNG/WebP), and a JPEG keeps the source EXIF when
+  the switch is off.
+- **Localization** — the UI is now translated into Spanish, German,
+  Japanese, Chinese (Simplified and Traditional), French and Russian,
+  following the system language (English remains the default).
+
 ## [1.1.0] - 2026-07-30
 
 ### Added
@@ -38,15 +55,6 @@ All notable changes to Marklibre are documented in this file.
   color dot closes the panel.
 - Tapping the pen button toggles the color panel on/off; if the palette
   panel is open it closes first.
-- **Metadata** — a button next to Save opens a bottom sheet with the
-  image's metadata and location (source, dimensions, last modified, GPS
-  coordinates, taken time, camera); the fire-department button in its top
-  right strips all metadata & location by re-encoding the file, and a
-  help button beside it explains what metadata is and why removing it
-  matters. Two switches (persisted, default on) control whether sharing
-  and saving strip metadata automatically; the output always keeps the
-  source format (JPEG/PNG/WebP), and a JPEG keeps the source EXIF when
-  the switch is off.
 
 ### Fixed
 

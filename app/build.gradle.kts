@@ -19,8 +19,8 @@ android {
         applicationId = "org.librelab.marklibre"
         minSdk = 35
         targetSdk = 36
-        versionCode = 233
-        versionName = "1.1.0"
+        versionCode = 234
+        versionName = "1.2.0"
     }
 
     signingConfigs {
