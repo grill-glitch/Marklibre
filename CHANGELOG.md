@@ -2,7 +2,7 @@
 
 All notable changes to Marklibre are documented in this file.
 
-## [Unreleased]
+## [1.1.0] - 2026-07-30
 
 ### Added
 
@@ -38,11 +38,14 @@ All notable changes to Marklibre are documented in this file.
   color dot closes the panel.
 - Tapping the pen button toggles the color panel on/off; if the palette
   panel is open it closes first.
-- Fix: preset color dots stopped working when the pen width row was added
+
+### Fixed
+
+- Preset color dots stopped working when the pen width row was added
   to the color panel - the dot collector only looked at the panel's direct
   children (the row container), so no dot had a click listener; it now
   walks the panel recursively.
-- Fix: BACK with unsaved edits asks "Discard changes?" instead of
+- BACK with unsaved edits asks "Discard changes?" instead of
   dropping the annotations silently; handled via OnBackPressedCallback so
   it also works on Android 16+ (predictive back no longer calls
   onBackPressed()).
