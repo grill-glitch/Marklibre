@@ -4,6 +4,7 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
+import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.Drawable
@@ -70,6 +71,14 @@ class ToolbarFragment : Fragment() {
         requireActivity().findViewById<EditText>(R.id.palette_hex)
     }
     private var paletteInited = false
+
+    /** Remembered custom palette color (persisted across launches). */
+    private val palettePrefs by lazy {
+        requireContext().getSharedPreferences("marklibre", Context.MODE_PRIVATE)
+    }
+    private var paletteRememberedColor = 0
+    private var paletteHasMemory = false
+
     private lateinit var cropButton: ImageButton
     private lateinit var textButton: ImageButton
     private lateinit var eraserButton: ImageButton
@@ -170,6 +179,8 @@ class ToolbarFragment : Fragment() {
         })
 
         paletteButton.setOnClickListener { togglePalette() }
+        paletteRememberedColor = palettePrefs.getInt("palette_color", -1)
+        paletteHasMemory = paletteRememberedColor != -1
 
         // anchor the bright highlight on the pen once positions are known
         view.post {
@@ -322,9 +333,12 @@ class ToolbarFragment : Fragment() {
         val selected = colorButtons.none { it.color == currentInkColor }
         val d = resources.displayMetrics.density
         val inset = (8f * d).toInt()
+        // like the preset dots, the ring shows the palette's own color once a
+        // custom color exists (remembered); neutral gray before that
+        val ringColor = if (paletteHasMemory) paletteRememberedColor else 0x669E9E9E.toInt()
         val oval = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
-            setStroke((1.5f * d).toInt(), 0x669E9E9E.toInt())
+            setStroke((1.5f * d).toInt(), ringColor)
             setColor(if (selected) currentInkColor else Color.TRANSPARENT)
         }
         paletteButton.background = InsetDrawable(oval, inset, inset, inset, inset)
@@ -372,7 +386,8 @@ class ToolbarFragment : Fragment() {
             setupPalette()
             paletteInited = true
         }
-        initPaletteFrom(currentInkColor)
+        // start from the remembered custom color (or the current ink color)
+        initPaletteFrom(if (paletteHasMemory) paletteRememberedColor else currentInkColor)
         // float the panel right above the toolbar (same window, so taps
         // on the color dots / tools below pass straight through)
         val toolbar = requireActivity().findViewById<View>(R.id.toolbar_container)
@@ -515,10 +530,16 @@ class ToolbarFragment : Fragment() {
         })
 
         requireActivity().findViewById<View>(R.id.palette_apply).setOnClickListener {
-            callbacks?.onColorSelected(paletteColor())
+            val color = paletteColor()
+            callbacks?.onColorSelected(color)
+            // remember the custom color for next launch
+            paletteRememberedColor = color
+            paletteHasMemory = true
+            palettePrefs.edit().putInt("palette_color", color).apply()
+            updatePaletteButton()
             collapsePalette()
         }
 
-        initPaletteFrom(currentInkColor)
+        initPaletteFrom(if (paletteHasMemory) paletteRememberedColor else currentInkColor)
     }
 }

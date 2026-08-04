@@ -29,6 +29,9 @@ All notable changes to Marklibre are documented in this file.
 - The palette picker is an inline panel floating above the toolbar (not a
   separate window, so preset color dots, tools and the canvas stay tappable
   in one tap); BACK collapses it first.
+- The palette button mirrors the preset dots: unchecked it shows a ring in
+  the palette's own color, checked it fills with the custom color; the
+  custom color is remembered across launches (SharedPreferences).
 - Fix: preset color dots stopped working when the pen width row was added
   to the color panel - the dot collector only looked at the panel's direct
   children (the row container), so no dot had a click listener; it now
