@@ -497,6 +497,13 @@ class AnnotateActivity : AppCompatActivity() {
         val view = layoutInflater.inflate(R.layout.quick_reference_sheet, null)
         sheet.setContentView(view)
         fillMetadata(view)
+        view.findViewById<View>(R.id.help_button).setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.metadata_help_title)
+                .setMessage(R.string.metadata_help_body)
+                .setPositiveButton(R.string.crop_cancel, null)
+                .show()
+        }
         view.findViewById<View>(R.id.fire_department_button).setOnClickListener {
             if (stripMetadata()) {
                 fillMetadata(view)

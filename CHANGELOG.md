@@ -41,7 +41,9 @@ All notable changes to Marklibre are documented in this file.
 - **Metadata** — a button next to Save opens a bottom sheet with the
   image's metadata and location (source, dimensions, last modified, GPS
   coordinates, taken time, camera); the fire-department button in its top
-  right strips all metadata & location by re-encoding the file.
+  right strips all metadata & location by re-encoding the file, and a
+  help button beside it explains what metadata is and why removing it
+  matters.
 
 ### Fixed
 

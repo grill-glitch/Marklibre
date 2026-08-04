@@ -11,6 +11,9 @@
     <string name="metadata_exif_time">Taken</string>
     <string name="metadata_camera">Camera</string>
     <string name="metadata_clear">Remove metadata and location</string>
+    <string name="metadata_help">About metadata</string>
+    <string name="metadata_help_title">About metadata</string>
+    <string name="metadata_help_body">Photos often carry hidden metadata: when and with which camera they were taken, and sometimes the GPS location.\n\nRemoving metadata protects your privacy — nobody can see where or with what device the image was made — and keeps shared images clean.</string>
     <string name="metadata_cleared">Metadata and location removed</string>
     <string name="metadata_none">None</string>
     <string name="metadata_location_removed">Location removed</string>
