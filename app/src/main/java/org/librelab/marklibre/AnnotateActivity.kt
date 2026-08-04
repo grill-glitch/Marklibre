@@ -44,7 +44,6 @@ class AnnotateActivity : AppCompatActivity() {
     private lateinit var saveButton: MaterialButton
     private lateinit var undoButton: ImageButton
     private lateinit var redoButton: ImageButton
-    private lateinit var rotateButton: ImageButton
 
     private var inputUri: Uri? = null
     private var isScreenshotSource = false
@@ -61,7 +60,6 @@ class AnnotateActivity : AppCompatActivity() {
         saveButton = findViewById(R.id.save)
         undoButton = findViewById(R.id.undo_button)
         redoButton = findViewById(R.id.redo_button)
-        rotateButton = findViewById(R.id.rotate_button)
         toolbarFragment = supportFragmentManager.findFragmentById(R.id.toolbar_fragment) as ToolbarFragment
         trashDrop = findViewById(R.id.trash_drop)
         trashOnPrimaryContainer = themeColor(
@@ -119,7 +117,6 @@ class AnnotateActivity : AppCompatActivity() {
         findViewById<View>(R.id.delete).setOnClickListener { doDelete() }
         undoButton.setOnClickListener { canvas.undo() }
         redoButton.setOnClickListener { canvas.redo() }
-        rotateButton.setOnClickListener { canvas.rotateImage() }
     }
 
     private fun setupToolbar() {
@@ -140,6 +137,10 @@ class AnnotateActivity : AppCompatActivity() {
             override fun onColorSelected(color: Int) {
                 canvas.color = color
                 toolbarFragment.setSelectedColor(color)
+            }
+
+            override fun onRotate() {
+                canvas.rotateImage()
             }
         }
         canvas.listener = object : DrawingCanvasView.Listener {
@@ -253,7 +254,6 @@ class AnnotateActivity : AppCompatActivity() {
         toolbarContainer?.visibility = View.GONE
         undoButton.isEnabled = false
         redoButton.isEnabled = false
-        rotateButton.isEnabled = false
     }
 
     private fun exitCropMode() {
@@ -265,7 +265,6 @@ class AnnotateActivity : AppCompatActivity() {
         // re-push the real undo/redo availability (a cancelled crop changes
         // nothing; a confirmed one already pushed a ReplaceImage op)
         canvas.refreshUndoState()
-        rotateButton.isEnabled = true
     }
 
     private fun loadImage(uri: Uri) {

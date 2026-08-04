@@ -37,25 +37,12 @@
         android:layout_width="@dimen/ink_lite_toolbar_button_size"
         android:layout_height="@dimen/ink_lite_toolbar_button_size"
         android:layout_alignWithParentIfMissing="true"
-        android:layout_toStartOf="@id/rotate_button"
+        android:layout_toStartOf="@id/delete"
         android:background="@drawable/action_button_background"
         android:contentDescription="@string/ink_redo"
         android:src="@drawable/ic_redo"
         android:tint="?attr/colorOnSurface"
         android:tooltipText="@string/ink_redo" />
-
-    <ImageButton
-        android:id="@+id/rotate_button"
-        style="@style/MarkupToolbarButton"
-        android:layout_width="@dimen/ink_lite_toolbar_button_size"
-        android:layout_height="@dimen/ink_lite_toolbar_button_size"
-        android:layout_alignWithParentIfMissing="true"
-        android:layout_toStartOf="@id/delete"
-        android:background="@drawable/action_button_background"
-        android:contentDescription="@string/rotate"
-        android:src="@drawable/ic_rotate"
-        android:tint="?attr/colorOnSurface"
-        android:tooltipText="@string/rotate" />
 
     <ImageButton
         android:id="@+id/delete"

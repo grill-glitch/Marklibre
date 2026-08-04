@@ -77,6 +77,14 @@
                 android:src="@drawable/ic_eraser"
                 android:tint="?attr/colorOnSurface"
                 android:tooltipText="@string/ink_eraser" />
+
+            <ImageButton
+                android:id="@+id/rotate_button"
+                style="@style/MarkupToolbarButton"
+                android:contentDescription="@string/rotate"
+                android:src="@drawable/ic_rotate"
+                android:tint="?attr/colorOnSurface"
+                android:tooltipText="@string/rotate" />
         </LinearLayout>
     </FrameLayout>
 </LinearLayout>

@@ -19,6 +19,8 @@ class ToolbarFragment : Fragment() {
 
     interface Callbacks {
         fun onToolSelected(tool: InkTool)
+        /** Momentary action (not a tool): rotate the whole image 90° CW. */
+        fun onRotate()
         fun onColorSelected(color: Int)
     }
 
@@ -28,6 +30,7 @@ class ToolbarFragment : Fragment() {
     private lateinit var cropButton: ImageButton
     private lateinit var textButton: ImageButton
     private lateinit var eraserButton: ImageButton
+    private lateinit var rotateButton: ImageButton
     private lateinit var penButton: PenButton
     private lateinit var highlighterButton: PenButton
     private lateinit var colorButtons: List<ColorButton>
@@ -53,6 +56,7 @@ class ToolbarFragment : Fragment() {
         cropButton = view.findViewById(R.id.crop_button)
         textButton = view.findViewById(R.id.ink_text_button)
         eraserButton = view.findViewById(R.id.ink_eraser_button)
+        rotateButton = view.findViewById(R.id.rotate_button)
         penButton = view.findViewById(R.id.ink_pen_button)
         highlighterButton = view.findViewById(R.id.ink_highlighter_button)
         penButton.setImageResource(R.drawable.ic_pen)
@@ -72,6 +76,7 @@ class ToolbarFragment : Fragment() {
         cropButton.setOnClickListener { callbacks?.onToolSelected(InkTool.CROP) }
         textButton.setOnClickListener { callbacks?.onToolSelected(InkTool.TEXT) }
         eraserButton.setOnClickListener { callbacks?.onToolSelected(InkTool.ERASER) }
+        rotateButton.setOnClickListener { callbacks?.onRotate() }
         penButton.setOnClickListener { callbacks?.onToolSelected(InkTool.PEN) }
         highlighterButton.setOnClickListener { callbacks?.onToolSelected(InkTool.HIGHLIGHTER) }
 

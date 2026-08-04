@@ -6,8 +6,8 @@ All notable changes to Marklibre are documented in this file.
 
 ### Added
 
-- **Rotate** — rotate the whole image 90° clockwise with one tap (action-bar
-  button next to Undo/Redo). Ink is flattened into the image as a single
+- **Rotate** — rotate the whole image 90° clockwise with one tap (bottom
+  toolbar, next to the eraser). Ink is flattened into the image as a single
   undoable op, exactly like crop, so Undo restores the previous state.
 
 ## [1.0.0] - 2026-07-31
