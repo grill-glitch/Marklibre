@@ -19,6 +19,7 @@ import android.view.WindowInsets
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.FileProvider
@@ -30,6 +31,35 @@ import java.io.FileOutputStream
 import java.io.IOException
 
 class AnnotateActivity : AppCompatActivity() {
+
+    /**
+     * BACK handling via the dispatcher (works on Android 16+ where
+     * overriding onBackPressed() is no longer invoked with predictive
+     * back). Text editor and crop mode consume BACK first; otherwise
+     * unsaved edits ask before discarding.
+     */
+    private val backCallback = object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            if (textFragment.view?.visibility == View.VISIBLE) {
+                textFragment.dismiss()
+                return
+            }
+            if (cropOverlay.visibility == View.VISIBLE) {
+                exitCropMode()
+                return
+            }
+            if (canvas.hasEdits()) {
+                AlertDialog.Builder(this@AnnotateActivity)
+                    .setTitle(R.string.discard_changes)
+                    .setMessage(R.string.discard_changes_message)
+                    .setPositiveButton(R.string.discard) { _, _ -> finish() }
+                    .setNegativeButton(R.string.crop_cancel, null)
+                    .show()
+                return
+            }
+            finish()
+        }
+    }
 
     private lateinit var canvas: DrawingCanvasView
     private lateinit var toolbarFragment: ToolbarFragment
@@ -73,6 +103,7 @@ class AnnotateActivity : AppCompatActivity() {
         setupToolbar()
         setupTextEditor()
         setupCrop()
+        onBackPressedDispatcher.addCallback(this, backCallback)
 
         undoButton.isEnabled = false
         redoButton.isEnabled = false
@@ -438,27 +469,5 @@ class AnnotateActivity : AppCompatActivity() {
             bm.compress(Bitmap.CompressFormat.PNG, 100, out)
         }
         return file
-    }
-
-    override fun onBackPressed() {
-        if (textFragment.view?.visibility == View.VISIBLE) {
-            textFragment.dismiss()
-            return
-        }
-        if (cropOverlay.visibility == View.VISIBLE) {
-            exitCropMode()
-            return
-        }
-        if (canvas.hasEdits()) {
-            // BACK would drop unsaved annotations - ask first
-            AlertDialog.Builder(this)
-                .setTitle(R.string.discard_changes)
-                .setMessage(R.string.discard_changes_message)
-                .setPositiveButton(R.string.discard) { _, _ -> super.onBackPressed() }
-                .setNegativeButton(R.string.crop_cancel, null)
-                .show()
-            return
-        }
-        super.onBackPressed()
     }
 }

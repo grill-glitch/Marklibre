@@ -30,8 +30,10 @@ All notable changes to Marklibre are documented in this file.
   modal dialog): it shifts up when the keyboard opens, BACK hides the
   keyboard first and then dismisses the popup, and dragging any slider
   away from a black/gray start color restores full saturation/brightness.
-- Fix: BACK with unsaved edits now asks "Discard changes?" instead of
-  dropping the annotations silently.
+- Fix: BACK with unsaved edits asks "Discard changes?" instead of
+  dropping the annotations silently; handled via OnBackPressedCallback so
+  it also works on Android 16+ (predictive back no longer calls
+  onBackPressed()).
 
 ## [1.0.0] - 2026-07-31
 
