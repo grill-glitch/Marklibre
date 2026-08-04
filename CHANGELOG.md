@@ -26,10 +26,13 @@ All notable changes to Marklibre are documented in this file.
   color picker with hue / saturation / brightness / opacity sliders and a
   hex field; picked colors (with their opacity) apply to the pen and text,
   and the palette button shows the custom color while selected.
-- The palette picker is a popup anchored to the palette button (not a
-  modal dialog): it shifts up when the keyboard opens, BACK hides the
-  keyboard first and then dismisses the popup, and dragging any slider
-  away from a black/gray start color restores full saturation/brightness.
+- The palette picker is an inline panel floating above the toolbar (not a
+  separate window, so preset color dots, tools and the canvas stay tappable
+  in one tap); BACK collapses it first.
+- Fix: preset color dots stopped working when the pen width row was added
+  to the color panel - the dot collector only looked at the panel's direct
+  children (the row container), so no dot had a click listener; it now
+  walks the panel recursively.
 - Fix: BACK with unsaved edits asks "Discard changes?" instead of
   dropping the annotations silently; handled via OnBackPressedCallback so
   it also works on Android 16+ (predictive back no longer calls

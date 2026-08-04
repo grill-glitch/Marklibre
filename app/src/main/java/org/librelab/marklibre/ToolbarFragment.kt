@@ -10,15 +10,20 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
+import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.SeekBar
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import kotlin.math.roundToInt
 
 class ToolbarFragment : Fragment() {
 
@@ -29,8 +34,6 @@ class ToolbarFragment : Fragment() {
         fun onColorSelected(color: Int)
         /** A pen width option (in dp) was picked. */
         fun onWidthSelected(widthDp: Float)
-        /** The custom-color (palette) button was tapped. */
-        fun onPaletteClicked()
     }
 
     var callbacks: Callbacks? = null
@@ -40,6 +43,33 @@ class ToolbarFragment : Fragment() {
     private lateinit var penWidthPreview: View
     private lateinit var penWidthSlider: SeekBar
     private lateinit var paletteButton: ImageView
+
+    // The inline panel and its controls live in the activity layout; all
+    // lazy because the fragment view is inflated DURING the activity layout
+    // inflation, when the panel (declared after toolbar_container) does not
+    // exist yet - resolve them on first expansion instead.
+    private val palettePanel: View by lazy {
+        requireActivity().findViewById<View>(R.id.palette_panel)
+    }
+    private val palettePreview: View by lazy {
+        requireActivity().findViewById<View>(R.id.palette_preview)
+    }
+    private val paletteHue: SeekBar by lazy {
+        requireActivity().findViewById<SeekBar>(R.id.palette_hue)
+    }
+    private val paletteSat: SeekBar by lazy {
+        requireActivity().findViewById<SeekBar>(R.id.palette_saturation)
+    }
+    private val paletteVal: SeekBar by lazy {
+        requireActivity().findViewById<SeekBar>(R.id.palette_value)
+    }
+    private val paletteAlpha: SeekBar by lazy {
+        requireActivity().findViewById<SeekBar>(R.id.palette_opacity)
+    }
+    private val paletteHex: EditText by lazy {
+        requireActivity().findViewById<EditText>(R.id.palette_hex)
+    }
+    private var paletteInited = false
     private lateinit var cropButton: ImageButton
     private lateinit var textButton: ImageButton
     private lateinit var eraserButton: ImageButton
@@ -53,6 +83,25 @@ class ToolbarFragment : Fragment() {
 
     /** Current ink color, mirrored into the width preview bar. */
     private var currentInkColor: Int = Color.BLACK
+
+    // Inline palette picker state (HSV + alpha)
+    private var pHue = 0f
+    private var pSat = 1f
+    private var pVal = 1f
+    private var pAlpha = 255
+    private var pSyncing = false
+    private val paletteSatTrack = GradientDrawable(
+        GradientDrawable.Orientation.LEFT_RIGHT,
+        intArrayOf(0xFF888888.toInt(), 0xFFFF0000.toInt())
+    )
+    private val paletteValTrack = GradientDrawable(
+        GradientDrawable.Orientation.LEFT_RIGHT,
+        intArrayOf(0xFF000000.toInt(), 0xFFFF0000.toInt())
+    )
+    private val paletteAlphaTrack = GradientDrawable(
+        GradientDrawable.Orientation.LEFT_RIGHT,
+        intArrayOf(0x00000000, 0xFF000000.toInt())
+    )
 
     private var highlightView: View? = null
     private var dimBg: Drawable? = null
@@ -120,7 +169,7 @@ class ToolbarFragment : Fragment() {
             override fun onStopTrackingTouch(sb: SeekBar) {}
         })
 
-        paletteButton.setOnClickListener { callbacks?.onPaletteClicked() }
+        paletteButton.setOnClickListener { togglePalette() }
 
         // anchor the bright highlight on the pen once positions are known
         view.post {
@@ -133,9 +182,16 @@ class ToolbarFragment : Fragment() {
         val panel = view ?: return emptyList()
         val vg = panel.findViewById<ViewGroup>(R.id.color_panel)
         val out = ArrayList<ColorButton>()
-        for (i in 0 until vg.childCount) {
-            (vg.getChildAt(i) as? ColorButton)?.let { out.add(it) }
+        // the panel is a vertical stack (color row + pen width row), so the
+        // dots are nested one level down - walk recursively
+        fun walk(v: View) {
+            if (v is ColorButton) {
+                out.add(v)
+            } else if (v is ViewGroup) {
+                for (i in 0 until v.childCount) walk(v.getChildAt(i))
+            }
         }
+        walk(vg)
         return out
     }
 
@@ -255,6 +311,10 @@ class ToolbarFragment : Fragment() {
         penButton.activeColor = color
         highlighterButton.activeColor = color
         updateWidthPreview()
+        // keep the open palette panel in sync with preset picks
+        if (palettePanel.visibility == View.VISIBLE) {
+            initPaletteFrom(color)
+        }
     }
 
     /** Palette button: ring sized like the color dots; tinted like toolbar icons. */
@@ -302,6 +362,163 @@ class ToolbarFragment : Fragment() {
         }
     }
 
-    /** Anchor for the palette popup (the palette button itself). */
-    fun paletteAnchor(): View = paletteButton
+    /** Expands/collapses the inline palette panel. */
+    fun togglePalette() {
+        if (palettePanel.visibility == View.VISIBLE) {
+            collapsePalette()
+            return
+        }
+        if (!paletteInited) {
+            setupPalette()
+            paletteInited = true
+        }
+        initPaletteFrom(currentInkColor)
+        // float the panel right above the toolbar (same window, so taps
+        // on the color dots / tools below pass straight through)
+        val toolbar = requireActivity().findViewById<View>(R.id.toolbar_container)
+        val lp = palettePanel.layoutParams as FrameLayout.LayoutParams
+        lp.bottomMargin = toolbar.height + (8f * resources.displayMetrics.density).toInt()
+        palettePanel.layoutParams = lp
+        palettePanel.visibility = View.VISIBLE
+    }
+
+    /** Collapses the palette panel; returns true if it was open. */
+    fun collapsePalette(): Boolean {
+        val open = palettePanel.visibility == View.VISIBLE
+        if (open) palettePanel.visibility = View.GONE
+        return open
+    }
+
+    private fun paletteColor(): Int = Color.HSVToColor(pAlpha, floatArrayOf(pHue, pSat, pVal))
+
+    private fun refreshPalettePreview() {
+        palettePreview.setBackgroundColor(paletteColor())
+    }
+
+    private fun refreshPaletteHex() {
+        if (pSyncing) return
+        pSyncing = true
+        paletteHex.setText(
+            String.format(
+                "#%02X%02X%02X",
+                Color.red(paletteColor()),
+                Color.green(paletteColor()),
+                Color.blue(paletteColor())
+            )
+        )
+        pSyncing = false
+    }
+
+    private fun refreshPaletteSliders() {
+        if (pSyncing) return
+        pSyncing = true
+        paletteHue.progress = (pHue / 360f * 100f).roundToInt()
+        paletteSat.progress = (pSat * 100f).roundToInt()
+        paletteVal.progress = (pVal * 100f).roundToInt()
+        paletteAlpha.progress = (pAlpha / 255f * 100f).roundToInt()
+        pSyncing = false
+    }
+
+    private fun applyPaletteHex() {
+        val text = paletteHex.text.toString().trim().removePrefix("#")
+        if (text.length != 6) return
+        val rgb = text.toIntOrNull(16) ?: return
+        val hsv = FloatArray(3)
+        Color.colorToHSV(0xFF000000.toInt() or rgb, hsv)
+        pHue = hsv[0]
+        pSat = hsv[1]
+        pVal = hsv[2]
+        refreshPaletteSliders()
+        refreshPalettePreview()
+    }
+
+    private fun tintPaletteSliders() {
+        val rgb = Color.HSVToColor(floatArrayOf(pHue, 1f, 1f))
+        paletteSatTrack.colors = intArrayOf(Color.rgb(128, 128, 128), rgb)
+        paletteValTrack.colors = intArrayOf(Color.BLACK, rgb)
+        paletteSat.progressDrawable = paletteSatTrack
+        paletteVal.progressDrawable = paletteValTrack
+        paletteAlpha.progressDrawable = paletteAlphaTrack
+    }
+
+    /** Initializes the picker sliders/hex/preview from [color]. */
+    private fun initPaletteFrom(color: Int) {
+        val hsv = FloatArray(3)
+        Color.colorToHSV(color, hsv)
+        pHue = hsv[0]
+        pSat = hsv[1]
+        pVal = hsv[2]
+        pAlpha = Color.alpha(color)
+        refreshPaletteSliders()
+        refreshPaletteHex()
+        refreshPalettePreview()
+        tintPaletteSliders()
+    }
+
+    /** Wires the inline palette picker (sliders, hex, apply). */
+    private fun setupPalette() {
+        paletteHue.progressDrawable = GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            intArrayOf(
+                0xFFFF0000.toInt(), 0xFFFFFF00.toInt(), 0xFF00FF00.toInt(),
+                0xFF00FFFF.toInt(), 0xFF0000FF.toInt(), 0xFFFF00FF.toInt(),
+                0xFFFF0000.toInt()
+            )
+        )
+
+        val sliderListener = object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
+                if (pSyncing || !fromUser) return
+                when (sb) {
+                    paletteHue -> {
+                        pHue = progress / 100f * 360f
+                        // black/gray start colors have sat/val 0 - restore them
+                        // so dragging hue produces color, not more black
+                        if (pSat < 0.05f) {
+                            pSat = 1f
+                            paletteSat.progress = 100
+                        }
+                        if (pVal < 0.05f) {
+                            pVal = 1f
+                            paletteVal.progress = 100
+                        }
+                    }
+                    paletteSat -> pSat = progress / 100f
+                    paletteVal -> pVal = progress / 100f
+                    paletteAlpha -> pAlpha = (progress / 100f * 255f).roundToInt()
+                }
+                tintPaletteSliders()
+                refreshPaletteHex()
+                refreshPalettePreview()
+            }
+
+            override fun onStartTrackingTouch(sb: SeekBar) {}
+            override fun onStopTrackingTouch(sb: SeekBar) {}
+        }
+        paletteHue.setOnSeekBarChangeListener(sliderListener)
+        paletteSat.setOnSeekBarChangeListener(sliderListener)
+        paletteVal.setOnSeekBarChangeListener(sliderListener)
+        paletteAlpha.setOnSeekBarChangeListener(sliderListener)
+
+        paletteHex.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                if (pSyncing) return
+                val text = s.toString().trim().removePrefix("#")
+                if (text.length == 6 && text.toIntOrNull(16) != null) {
+                    applyPaletteHex()
+                    tintPaletteSliders()
+                    refreshPalettePreview()
+                }
+            }
+        })
+
+        requireActivity().findViewById<View>(R.id.palette_apply).setOnClickListener {
+            callbacks?.onColorSelected(paletteColor())
+            collapsePalette()
+        }
+
+        initPaletteFrom(currentInkColor)
+    }
 }

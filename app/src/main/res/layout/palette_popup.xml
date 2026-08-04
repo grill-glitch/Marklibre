@@ -4,6 +4,8 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="300dp"
     android:layout_height="wrap_content"
+    android:background="@drawable/palette_popup_bg"
+    android:elevation="8dp"
     android:orientation="vertical"
     android:padding="14dp">
 

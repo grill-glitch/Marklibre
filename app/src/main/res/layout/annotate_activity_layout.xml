@@ -71,6 +71,20 @@
                     android:layout_gravity="bottom|center_horizontal" />
             </LinearLayout>
 
+            <!-- Inline palette picker: floats ABOVE the toolbar (same window,
+                 so taps on the toolbar/color dots/canvas pass straight
+                 through); positioned in code right above the toolbar. -->
+            <LinearLayout
+                android:id="@+id/palette_panel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|center_horizontal"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <include layout="@layout/palette_popup" />
+            </LinearLayout>
+
             <!-- Drag-to-delete drop target: edge-to-edge sheet with rounded
                  top corners covering the screen bottom, shown while dragging
                  text (below the image, never over it). -->

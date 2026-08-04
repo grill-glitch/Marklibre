@@ -48,6 +48,9 @@ class AnnotateActivity : AppCompatActivity() {
                 exitCropMode()
                 return
             }
+            if (toolbarFragment.collapsePalette()) {
+                return
+            }
             if (canvas.hasEdits()) {
                 AlertDialog.Builder(this@AnnotateActivity)
                     .setTitle(R.string.discard_changes)
@@ -176,13 +179,6 @@ class AnnotateActivity : AppCompatActivity() {
 
             override fun onWidthSelected(widthDp: Float) {
                 canvas.penWidthDp = widthDp
-            }
-
-            override fun onPaletteClicked() {
-                PaletteDialog(this@AnnotateActivity, canvas.color) { color ->
-                    canvas.color = color
-                    toolbarFragment.setSelectedColor(color)
-                }.show(toolbarFragment.paletteAnchor())
             }
         }
         canvas.listener = object : DrawingCanvasView.Listener {
