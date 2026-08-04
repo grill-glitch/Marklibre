@@ -35,6 +35,8 @@ class ToolbarFragment : Fragment() {
         fun onColorSelected(color: Int)
         /** A pen width option (in dp) was picked. */
         fun onWidthSelected(widthDp: Float)
+        /** The eyedropper button was tapped: enter canvas pick mode. */
+        fun onPickColorRequested()
     }
 
     var callbacks: Callbacks? = null
@@ -70,7 +72,13 @@ class ToolbarFragment : Fragment() {
     private val paletteHex: EditText by lazy {
         requireActivity().findViewById<EditText>(R.id.palette_hex)
     }
+    private val paletteOriginalPreview: View by lazy {
+        requireActivity().findViewById<View>(R.id.palette_preview_original)
+    }
     private var paletteInited = false
+
+    /** Color the picker opened with (for the Original swatch + Cancel). */
+    private var paletteOriginalColor = Color.BLACK
 
     /** Remembered custom palette color (persisted across launches). */
     private val palettePrefs by lazy {
@@ -322,9 +330,9 @@ class ToolbarFragment : Fragment() {
         penButton.activeColor = color
         highlighterButton.activeColor = color
         updateWidthPreview()
-        // keep the open palette panel in sync with preset picks
+        // tapping a preset color closes the palette panel
         if (palettePanel.visibility == View.VISIBLE) {
-            initPaletteFrom(color)
+            collapsePalette()
         }
     }
 
@@ -386,6 +394,8 @@ class ToolbarFragment : Fragment() {
             setupPalette()
             paletteInited = true
         }
+        // remember the color we opened with (Original swatch + Cancel)
+        paletteOriginalColor = currentInkColor
         // start from the remembered custom color (or the current ink color)
         initPaletteFrom(if (paletteHasMemory) paletteRememberedColor else currentInkColor)
         // float the panel right above the toolbar (same window, so taps
@@ -408,6 +418,10 @@ class ToolbarFragment : Fragment() {
 
     private fun refreshPalettePreview() {
         palettePreview.setBackgroundColor(paletteColor())
+    }
+
+    private fun refreshPaletteOriginal() {
+        paletteOriginalPreview.setBackgroundColor(paletteOriginalColor)
     }
 
     private fun refreshPaletteHex() {
@@ -467,6 +481,7 @@ class ToolbarFragment : Fragment() {
         refreshPaletteSliders()
         refreshPaletteHex()
         refreshPalettePreview()
+        refreshPaletteOriginal()
         tintPaletteSliders()
     }
 
@@ -540,6 +555,24 @@ class ToolbarFragment : Fragment() {
             collapsePalette()
         }
 
+        // Cancel: restore the color the picker opened with and close
+        requireActivity().findViewById<View>(R.id.palette_cancel).setOnClickListener {
+            initPaletteFrom(paletteOriginalColor)
+            collapsePalette()
+        }
+
+        // Eyedropper: hand off to the activity, which puts the canvas into
+        // pick mode; the picked color comes back via setPickedColor()
+        requireActivity().findViewById<View>(R.id.palette_colorize).setOnClickListener {
+            callbacks?.onPickColorRequested()
+        }
+
         initPaletteFrom(if (paletteHasMemory) paletteRememberedColor else currentInkColor)
+    }
+
+    /** Applies a color picked from the image into the open panel. */
+    fun setPickedColor(color: Int) {
+        if (palettePanel.visibility != View.VISIBLE) return
+        initPaletteFrom(color)
     }
 }

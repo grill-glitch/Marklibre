@@ -180,11 +180,19 @@ class AnnotateActivity : AppCompatActivity() {
             override fun onWidthSelected(widthDp: Float) {
                 canvas.penWidthDp = widthDp
             }
+
+            override fun onPickColorRequested() {
+                canvas.pickColorMode = true
+            }
         }
         canvas.listener = object : DrawingCanvasView.Listener {
             override fun onUndoAvailability(hasUndo: Boolean, hasRedo: Boolean) {
                 undoButton.isEnabled = hasUndo
                 redoButton.isEnabled = hasRedo
+            }
+
+            override fun onColorPicked(color: Int) {
+                toolbarFragment.setPickedColor(color)
             }
 
             override fun onRequestNewText(x: Float, y: Float) {

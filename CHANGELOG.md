@@ -32,6 +32,10 @@ All notable changes to Marklibre are documented in this file.
 - The palette button mirrors the preset dots: unchecked it shows a ring in
   the palette's own color, checked it fills with the custom color; the
   custom color is remembered across launches (SharedPreferences).
+- The palette panel shows an Original vs Current swatch comparison, has a
+  Cancel button that restores the color the picker opened with, and an
+  eyedropper that picks a color straight from the image; tapping a preset
+  color dot closes the panel.
 - Fix: preset color dots stopped working when the pen width row was added
   to the color panel - the dot collector only looked at the panel's direct
   children (the row container), so no dot had a click listener; it now

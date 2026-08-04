@@ -42,6 +42,8 @@ class DrawingCanvasView @JvmOverloads constructor(
         fun onTextDragChanged(dragging: Boolean, x: Float, y: Float)
         /** True when (x, y) is over the text delete drop target. */
         fun onTextDropTargetContains(x: Float, y: Float): Boolean
+        /** Eyedropper result: a color picked from the image. */
+        fun onColorPicked(color: Int)
     }
 
     var listener: Listener? = null
@@ -116,6 +118,9 @@ class DrawingCanvasView @JvmOverloads constructor(
     // layer bitmap path.
     private var gestureMatrix = Matrix()
     private var gestureActive = false
+
+    /** When true, the next touch picks a source pixel instead of drawing. */
+    var pickColorMode = false
     private var gestureSpanPrev = 0f
     private var gestureFocusPrev = PointF()
 
@@ -576,7 +581,31 @@ class DrawingCanvasView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (tool == InkTool.CROP) return false
+        if (pickColorMode) {
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                pickColorMode = false
+                listener?.onColorPicked(pickColorAt(event.x, event.y))
+            }
+            return true
+        }
         return if (tool == InkTool.TEXT) handleTextTool(event) else handleDrawTool(event)
+    }
+
+    /**
+     * Reads the source pixel under a screen point (accounting for the
+     * current fit/gesture matrix). Used by the eyedropper.
+     */
+    fun pickColorAt(x: Float, y: Float): Int {
+        val src = source ?: return Color.TRANSPARENT
+        val pts = floatArrayOf(x, y)
+        inverse.mapPoints(pts)
+        val sx = pts[0].toInt()
+        val sy = pts[1].toInt()
+        return if (sx in 0 until src.width && sy in 0 until src.height) {
+            src.getPixel(sx, sy)
+        } else {
+            Color.TRANSPARENT
+        }
     }
 
     private fun handleDrawTool(event: MotionEvent): Boolean {

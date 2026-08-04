@@ -9,6 +9,10 @@
     <string name="rotate">Rotate</string>
     <string name="palette">Palette</string>
     <string name="palette_apply">Apply</string>
+    <string name="palette_cancel">Cancel</string>
+    <string name="palette_colorize">Pick color from image</string>
+    <string name="palette_original">Original</string>
+    <string name="palette_current">Current</string>
     <string name="palette_hue">Hue</string>
     <string name="palette_saturation">Saturation</string>
     <string name="palette_value">Brightness</string>
