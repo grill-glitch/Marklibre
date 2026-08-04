@@ -21,7 +21,7 @@ sealed class InkElement {
     class Stroke(
         val path: Path,
         val color: Int,
-        val width: Float,
+        var width: Float,
         val style: StrokeStyle
     ) : InkElement()
 

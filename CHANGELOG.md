@@ -11,6 +11,10 @@ All notable changes to Marklibre are documented in this file.
   undoable op, exactly like crop, so Undo restores the previous state.
 - The top-left button is always **Save** — it no longer switches to Share
   when editing a screenshot; Share stays in the top-right.
+- **Two-finger zoom / pan** — while a brush tool (pen / highlighter /
+  eraser) is active, pinch to zoom (0.2x-8x) and drag with two fingers to
+  pan the image; strokes and text scale with it. A single finger still
+  draws.
 
 ## [1.0.0] - 2026-07-31
 

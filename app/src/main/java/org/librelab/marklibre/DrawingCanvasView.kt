@@ -106,6 +106,16 @@ class DrawingCanvasView @JvmOverloads constructor(
     private var rotateStartRotation = 0f
     private var rotationIcon: Drawable? = null
 
+    // Two-finger canvas zoom/pan (pen tools only). The gesture matrix is a
+    // view-space transform applied on top of the base fit matrix while the
+    // gesture runs; on release it is committed into the element coordinates
+    // (paths/widths/positions), so idle rendering stays on the fast ink
+    // layer bitmap path.
+    private var gestureMatrix = Matrix()
+    private var gestureActive = false
+    private var gestureSpanPrev = 0f
+    private var gestureFocusPrev = PointF()
+
     private val touchSlop: Float by lazy {
         ViewConfiguration.get(context).scaledTouchSlop.toFloat()
     }
@@ -119,6 +129,8 @@ class DrawingCanvasView @JvmOverloads constructor(
         undoStack.clear()
         redoStack.clear()
         selectedText = null
+        gestureActive = false
+        gestureMatrix.reset()
         computeMatrix()
         renderInk()
         notifyUndo()
@@ -204,31 +216,51 @@ class DrawingCanvasView @JvmOverloads constructor(
         if (layer.width != width || layer.height != height) return
         layer.eraseColor(Color.TRANSPARENT)
         val c = Canvas(layer)
-        for (el in elements) {
-            when (el) {
-                is InkElement.Stroke ->
-                    c.drawPath(el.path, strokePaint(el.style, el.color, el.width))
-                is InkElement.Text -> {
-                    val p = textPaint(el.color, el.font, el.size)
-                    if (el.rotation != 0f) {
-                        val w = p.measureText(el.text)
-                        val h = p.descent() - p.ascent()
-                        c.save()
-                        c.rotate(el.rotation, el.x + w / 2f, el.y + h / 2f)
-                        c.drawText(el.text, el.x, el.y - p.ascent(), p)
-                        c.restore()
-                    } else {
-                        c.drawText(el.text, el.x, el.y - p.ascent(), p)
-                    }
+        for (el in elements) drawElement(c, el)
+        invalidate()
+    }
+
+    /** Draws one element in view coordinates (shared by ink layer + gesture pass). */
+    private fun drawElement(c: Canvas, el: InkElement) {
+        when (el) {
+            is InkElement.Stroke ->
+                c.drawPath(el.path, strokePaint(el.style, el.color, el.width))
+            is InkElement.Text -> {
+                val p = textPaint(el.color, el.font, el.size)
+                if (el.rotation != 0f) {
+                    val w = p.measureText(el.text)
+                    val h = p.descent() - p.ascent()
+                    c.save()
+                    c.rotate(el.rotation, el.x + w / 2f, el.y + h / 2f)
+                    c.drawText(el.text, el.x, el.y - p.ascent(), p)
+                    c.restore()
+                } else {
+                    c.drawText(el.text, el.x, el.y - p.ascent(), p)
                 }
             }
         }
-        invalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        source?.let { canvas.drawBitmap(it, matrix, null) }
+        source?.let {
+            if (gestureActive) {
+                // Two-finger gesture running: draw image + ink vectorially
+                // under the gesture transform (the ink layer bitmap cannot
+                // be scaled without blurring).
+                canvas.save()
+                canvas.concat(gestureMatrix)
+                canvas.drawBitmap(it, matrix, null)
+                for (el in elements) drawElement(canvas, el)
+                val path = activePath
+                if (path != null) {
+                    canvas.drawPath(path, strokePaint(activeStyle, activeColor, activeWidth))
+                }
+                canvas.restore()
+                return
+            }
+            canvas.drawBitmap(it, matrix, null)
+        }
         // Composite the in-progress stroke onto the ink layer so the eraser
         // preview only clears ink - never the image below (a CLEAR path drawn
         // on the main canvas would punch a transparent hole through the image,
@@ -465,9 +497,18 @@ class DrawingCanvasView @JvmOverloads constructor(
     /** Re-pushes undo/redo availability to the listener (e.g. after a mode switch). */
     fun refreshUndoState() = notifyUndo()
 
+    /** Scale factor of the active gesture transform (1f when idle). */
+    private fun gestureScale(): Float {
+        val v = FloatArray(9)
+        gestureMatrix.getValues(v)
+        return hypot(v[Matrix.MSCALE_X], v[Matrix.MSKEW_Y]).coerceAtLeast(1e-4f)
+    }
+
     /**
      * Flattens source + ink into a full-resolution bitmap (source pixel size).
      * Eraser strokes affect the ink layer only - the image is never damaged.
+     * An in-flight two-finger gesture is folded into the mapping so a save
+     * during the gesture still lands correctly.
      */
     fun flattenFullRes(): Bitmap {
         val src = source
@@ -487,16 +528,19 @@ class DrawingCanvasView @JvmOverloads constructor(
         val ic = Canvas(ink)
         val k = matrix.mapRadius(1f)
         val invK = if (k == 0f) 1f else 1f / k
+        val gs = gestureScale()
         for (el in elements) {
             when (el) {
                 is InkElement.Stroke -> {
                     val p = Path(el.path)
+                    p.transform(gestureMatrix)
                     p.transform(inverse)
-                    ic.drawPath(p, strokePaint(el.style, el.color, el.width * invK))
+                    ic.drawPath(p, strokePaint(el.style, el.color, el.width * gs * invK))
                 }
                 is InkElement.Text -> {
-                    val p = textPaint(el.color, el.font, el.size * invK)
+                    val p = textPaint(el.color, el.font, el.size * gs * invK)
                     val pts = floatArrayOf(el.x, el.y)
+                    gestureMatrix.mapPoints(pts)
                     inverse.mapPoints(pts)
                     if (el.rotation != 0f) {
                         val w = p.measureText(el.text)
@@ -530,6 +574,10 @@ class DrawingCanvasView @JvmOverloads constructor(
                 startStroke(event)
             }
             MotionEvent.ACTION_MOVE -> {
+                if (gestureActive) {
+                    updateCanvasGesture(event)
+                    return true
+                }
                 if (rotatingText) {
                     rotateSelectedText(event.x, event.y)
                     return true
@@ -559,9 +607,21 @@ class DrawingCanvasView @JvmOverloads constructor(
                     val (fx, fy) = pointerFocus(event)
                     lastFocusX = fx
                     lastFocusY = fy
+                } else if (!gestureActive && event.pointerCount >= 2) {
+                    // second finger down -> canvas zoom/pan gesture
+                    startCanvasGesture(event)
+                }
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                if (gestureActive) {
+                    endCanvasGesture()
                 }
             }
             MotionEvent.ACTION_UP -> {
+                if (gestureActive) {
+                    endCanvasGesture()
+                    return true
+                }
                 if (finishTextGesture(event.x, event.y)) return true
                 endStroke()
             }
@@ -571,10 +631,75 @@ class DrawingCanvasView @JvmOverloads constructor(
                 resizeCorner = null
                 rotatingText = false
                 dragStartState = null
+                gestureActive = false
+                gestureMatrix.reset()
                 listener?.onTextDragChanged(false, 0f, 0f)
             }
         }
         return true
+    }
+
+    // ---------- two-finger canvas zoom/pan ----------
+
+    /** Begins a two-finger gesture; cancels any in-progress stroke/text state. */
+    private fun startCanvasGesture(event: MotionEvent) {
+        gestureActive = true
+        activePath = null
+        selectedText = null
+        gestureMatrix.reset()
+        gestureSpanPrev = pointerSpan(event)
+        val (fx, fy) = pointerFocus(event)
+        gestureFocusPrev = PointF(fx, fy)
+        listener?.onTextDragChanged(false, 0f, 0f)
+        invalidate()
+    }
+
+    private fun updateCanvasGesture(event: MotionEvent) {
+        val span = pointerSpan(event)
+        if (span <= 0f) return
+        val (fx, fy) = pointerFocus(event)
+        var ds = span / gestureSpanPrev
+        // clamp total zoom to [0.2x, 8x] of the base fit scale
+        val v = FloatArray(9)
+        gestureMatrix.getValues(v)
+        val cur = hypot(v[Matrix.MSCALE_X], v[Matrix.MSKEW_Y]).coerceAtLeast(1e-4f)
+        val target = (cur * ds).coerceIn(0.2f, 8f)
+        ds = target / cur
+        // scale around the current focus, then follow the focus movement
+        gestureMatrix.postScale(ds, ds, fx, fy)
+        gestureMatrix.postTranslate(fx - gestureFocusPrev.x, fy - gestureFocusPrev.y)
+        gestureSpanPrev = span
+        gestureFocusPrev = PointF(fx, fy)
+        invalidate()
+    }
+
+    /** Commits the gesture transform into element coordinates and stops. */
+    private fun endCanvasGesture() {
+        if (!gestureActive) return
+        gestureActive = false
+        if (!gestureMatrix.isIdentity) {
+            val v = FloatArray(9)
+            gestureMatrix.getValues(v)
+            val s = hypot(v[Matrix.MSCALE_X], v[Matrix.MSKEW_Y])
+            for (el in elements) {
+                when (el) {
+                    is InkElement.Stroke -> {
+                        el.path.transform(gestureMatrix)
+                        el.width *= s
+                    }
+                    is InkElement.Text -> {
+                        val pts = floatArrayOf(el.x, el.y)
+                        gestureMatrix.mapPoints(pts)
+                        el.x = pts[0]
+                        el.y = pts[1]
+                        el.size *= s
+                    }
+                }
+            }
+            gestureMatrix.reset()
+        }
+        renderInk()
+        invalidate()
     }
 
     private fun handleTextTool(event: MotionEvent): Boolean {

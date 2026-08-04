@@ -24,6 +24,9 @@ ink engine is a hand-drawn Canvas implementation.
 ## Features
 
 - **Pen** — 7 ink colors, round-cap stroke with quadratic smoothing
+- **Two-finger zoom / pan** — while a brush tool is active, pinch to zoom
+  and drag with two fingers to pan the whole image (ink included); a single
+  finger still draws
 - **Highlighter** — translucent thick stroke over the image
 - **Eraser** — removes ink only, never damages the underlying image
 - **Text tool** — 6 font styles (Bold / Classic / Modern / Script / Soft /
