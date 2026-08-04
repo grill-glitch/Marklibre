@@ -7,6 +7,14 @@
     <string name="delete">Delete</string>
     <string name="crop">Crop</string>
     <string name="rotate">Rotate</string>
+    <string name="palette">Palette</string>
+    <string name="palette_apply">Apply</string>
+    <string name="palette_hue">Hue</string>
+    <string name="palette_saturation">Saturation</string>
+    <string name="palette_value">Brightness</string>
+    <string name="palette_opacity">Opacity</string>
+    <string name="palette_hex_hint">#RRGGBB</string>
+    <string name="pen_width">Pen width</string>
     <string name="ink_text">Text</string>
     <string name="ink_pen">Pen</string>
     <string name="ink_highlighter">Highlighter</string>

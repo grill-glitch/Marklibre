@@ -55,6 +55,9 @@ class DrawingCanvasView @JvmOverloads constructor(
 
     var color: Int = Color.BLACK
 
+    /** Pen stroke width in dp (user-selectable via the width row). */
+    var penWidthDp: Float = 8f
+
     private var source: Bitmap? = null
     private val elements = ArrayList<InkElement>()
     private val undoStack = ArrayDeque<CanvasOp>()
@@ -182,7 +185,8 @@ class DrawingCanvasView @JvmOverloads constructor(
             when (style) {
                 StrokeStyle.PEN -> {
                     this.color = color
-                    alpha = 255
+                    // custom palette colors carry their own alpha (opacity)
+                    alpha = Color.alpha(color)
                 }
                 StrokeStyle.HIGHLIGHTER -> {
                     this.color = color
@@ -1057,7 +1061,7 @@ class DrawingCanvasView @JvmOverloads constructor(
         }
         activeColor = color
         activeWidth = when (activeStyle) {
-            StrokeStyle.PEN -> 8f * density
+            StrokeStyle.PEN -> penWidthDp * density
             StrokeStyle.HIGHLIGHTER -> 26f * density
             StrokeStyle.ERASER -> 30f * density
         }

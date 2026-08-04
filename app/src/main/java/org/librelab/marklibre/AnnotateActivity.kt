@@ -142,6 +142,17 @@ class AnnotateActivity : AppCompatActivity() {
             override fun onRotate() {
                 canvas.rotateImage()
             }
+
+            override fun onWidthSelected(widthDp: Float) {
+                canvas.penWidthDp = widthDp
+            }
+
+            override fun onPaletteClicked() {
+                PaletteDialog(this@AnnotateActivity, canvas.color) { color ->
+                    canvas.color = color
+                    toolbarFragment.setSelectedColor(color)
+                }.show()
+            }
         }
         canvas.listener = object : DrawingCanvasView.Listener {
             override fun onUndoAvailability(hasUndo: Boolean, hasRedo: Boolean) {
@@ -177,6 +188,7 @@ class AnnotateActivity : AppCompatActivity() {
         }
         toolbarFragment.setActiveTool(InkTool.PEN)
         toolbarFragment.setSelectedColor(canvas.color)
+        toolbarFragment.setSelectedPenWidth(canvas.penWidthDp)
     }
 
     private fun setupTextEditor() {

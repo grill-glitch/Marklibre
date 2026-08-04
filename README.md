@@ -23,7 +23,11 @@ ink engine is a hand-drawn Canvas implementation.
 
 ## Features
 
-- **Pen** — 7 ink colors, round-cap stroke with quadratic smoothing
+- **Pen** — 7 ink colors, round-cap stroke with quadratic smoothing, width
+  slider (2-16 dp) with a live preview bar
+- **Palette** — a custom-color button opens a color picker (hue /
+  saturation / brightness / opacity sliders + hex field); custom colors
+  carry their own opacity
 - **Two-finger zoom / pan** — while a brush tool is active, pinch to zoom
   and drag with two fingers to pan the whole image (ink included); a single
   finger still draws

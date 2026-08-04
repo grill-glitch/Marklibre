@@ -5,13 +5,16 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.content.res.ColorStateList
+import android.graphics.Color
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.ImageButton
+import android.widget.SeekBar
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 
@@ -22,11 +25,19 @@ class ToolbarFragment : Fragment() {
         /** Momentary action (not a tool): rotate the whole image 90° CW. */
         fun onRotate()
         fun onColorSelected(color: Int)
+        /** A pen width option (in dp) was picked. */
+        fun onWidthSelected(widthDp: Float)
+        /** The custom-color (palette) button was tapped. */
+        fun onPaletteClicked()
     }
 
     var callbacks: Callbacks? = null
 
     private lateinit var colorPanel: View
+    private lateinit var penWidthRow: View
+    private lateinit var penWidthPreview: View
+    private lateinit var penWidthSlider: SeekBar
+    private lateinit var paletteButton: PaletteButton
     private lateinit var cropButton: ImageButton
     private lateinit var textButton: ImageButton
     private lateinit var eraserButton: ImageButton
@@ -34,6 +45,12 @@ class ToolbarFragment : Fragment() {
     private lateinit var penButton: PenButton
     private lateinit var highlighterButton: PenButton
     private lateinit var colorButtons: List<ColorButton>
+
+    /** Pen width range: 2..16 dp (slider progress 0..14). */
+    private val minPenWidth = 2f
+
+    /** Current ink color, mirrored into the width preview bar. */
+    private var currentInkColor: Int = Color.BLACK
 
     private var highlightView: View? = null
     private var dimBg: Drawable? = null
@@ -53,6 +70,10 @@ class ToolbarFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         colorPanel = view.findViewById(R.id.color_panel)
+        penWidthRow = view.findViewById(R.id.pen_width_row)
+        penWidthPreview = view.findViewById(R.id.pen_width_preview)
+        penWidthSlider = view.findViewById(R.id.pen_width_slider)
+        paletteButton = view.findViewById(R.id.palette_button)
         cropButton = view.findViewById(R.id.crop_button)
         textButton = view.findViewById(R.id.ink_text_button)
         eraserButton = view.findViewById(R.id.ink_eraser_button)
@@ -84,6 +105,21 @@ class ToolbarFragment : Fragment() {
             cb.setOnClickListener { callbacks?.onColorSelected(cb.color) }
         }
 
+        // pen width slider: 2..16 dp, live preview bar mirrors the width
+        penWidthSlider.progress = (8f - minPenWidth).toInt()
+        updateWidthPreview()
+        penWidthSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
+                updateWidthPreview()
+                if (fromUser) callbacks?.onWidthSelected(minPenWidth + progress)
+            }
+
+            override fun onStartTrackingTouch(sb: SeekBar) {}
+            override fun onStopTrackingTouch(sb: SeekBar) {}
+        })
+
+        paletteButton.setOnClickListener { callbacks?.onPaletteClicked() }
+
         // anchor the bright highlight on the pen once positions are known
         view.post {
             positionHighlight(penButton, animate = false)
@@ -111,6 +147,8 @@ class ToolbarFragment : Fragment() {
         highlighterButton.showColor = false
         penButton.active = tool == InkTool.PEN
         highlighterButton.active = tool == InkTool.HIGHLIGHTER
+        // the pen-width row is a pen-only setting
+        penWidthRow.visibility = if (tool == InkTool.PEN) View.VISIBLE else View.GONE
 
         // tool-switch animation: the newly clicked tool gets a dim highlight
         // immediately, while the bright highlight slides over to it
@@ -208,7 +246,34 @@ class ToolbarFragment : Fragment() {
         for (cb in colorButtons) {
             cb.checked = cb.color == color
         }
+        // the palette button is "checked" only when the current color is a
+        // custom one (not one of the presets)
+        currentInkColor = color
+        paletteButton.checked = colorButtons.none { it.color == color }
+        paletteButton.color = color
         penButton.activeColor = color
         highlighterButton.activeColor = color
+        updateWidthPreview()
+    }
+
+    /** Highlights the pen width option matching [widthDp]. */
+    fun setSelectedPenWidth(widthDp: Float) {
+        penWidthSlider.progress = (widthDp - minPenWidth).toInt().coerceIn(0, 14)
+        updateWidthPreview()
+    }
+
+    /** Renders the live width preview bar (height = current width, rounded). */
+    private fun updateWidthPreview() {
+        val widthDp = minPenWidth + penWidthSlider.progress
+        val h = (widthDp * 2f * resources.displayMetrics.density).coerceIn(4f, 200f)
+        penWidthPreview.layoutParams = penWidthPreview.layoutParams.apply { height = h.toInt() }
+        val stroke = 1.5f * resources.displayMetrics.density
+        penWidthPreview.background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = h / 2f
+            setStroke(stroke.toInt(), 0x999E9E9E.toInt())
+            // fill with the current ink color (visible on any surface)
+            setColor(currentInkColor)
+        }
     }
 }

@@ -20,6 +20,12 @@ All notable changes to Marklibre are documented in this file.
   instead of being re-drawn into the persistent ink layer every frame
   (which stacked the translucent alpha to opaque); the eraser preview
   still composites on the ink layer so it only clears ink.
+- **Pen width slider** — the pen's stroke width is now adjustable (2-16 dp)
+  via a slider with a live preview bar in the color panel (pen tool only).
+- **Custom palette color** — a palette button in the color row opens a
+  color picker with hue / saturation / brightness / opacity sliders and a
+  hex field; picked colors (with their opacity) apply to the pen and text,
+  and the palette button shows the custom color while selected.
 
 ## [1.0.0] - 2026-07-31
 
