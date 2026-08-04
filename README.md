@@ -30,6 +30,7 @@ ink engine is a hand-drawn Canvas implementation.
   Bubbly), 7 colors; tap to select, tap again to edit, drag to move, corner
   handles to scale (anchored on the opposite corner), rotation knob to rotate
 - **Crop** — draggable rectangle with 8 handles
+- **Rotate** — one tap rotates the whole image (ink included) 90° clockwise
 - **Undo / Redo** — full history for strokes, text edits and crops
 - **Save / Share / Copy / Delete** — full-resolution PNG export via FileProvider
 - **Sticker editor** — draw on a transparent canvas, save as a sticker PNG

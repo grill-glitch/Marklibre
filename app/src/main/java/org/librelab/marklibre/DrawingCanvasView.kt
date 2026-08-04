@@ -385,6 +385,33 @@ class DrawingCanvasView @JvmOverloads constructor(
         notifyUndo()
     }
 
+    /**
+     * Rotates the whole image (source + ink) 90° clockwise as one undoable
+     * op. Like crop, the flattened result replaces the canvas state — the
+     * ink becomes pixels, and undo restores the previous vector elements.
+     */
+    fun rotateImage() {
+        val src = source ?: return
+        val flat = flattenFullRes()
+        val rot = Matrix().apply { postRotate(90f) }
+        val rotated = Bitmap.createBitmap(flat, 0, 0, flat.width, flat.height, rot, true)
+        flat.recycle()
+        undoStack.addLast(
+            CanvasOp.ReplaceImage(
+                ImageState(src, ArrayList(elements)),
+                ImageState(rotated, emptyList())
+            )
+        )
+        redoStack.clear()
+        activePath = null
+        source = rotated
+        elements.clear()
+        selectedText = null
+        computeMatrix()
+        renderInk()
+        notifyUndo()
+    }
+
     fun undo() {
         val op = undoStack.removeLastOrNull() ?: return
         redoStack.addLast(op)
@@ -434,6 +461,9 @@ class DrawingCanvasView @JvmOverloads constructor(
     private fun notifyUndo() {
         listener?.onUndoAvailability(undoStack.isNotEmpty(), redoStack.isNotEmpty())
     }
+
+    /** Re-pushes undo/redo availability to the listener (e.g. after a mode switch). */
+    fun refreshUndoState() = notifyUndo()
 
     /**
      * Flattens source + ink into a full-resolution bitmap (source pixel size).
