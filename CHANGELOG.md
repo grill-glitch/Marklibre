@@ -15,6 +15,11 @@ All notable changes to Marklibre are documented in this file.
   eraser) is active, pinch to zoom (0.2x-8x) and drag with two fingers to
   pan the image; strokes and text scale with it. A single finger still
   draws.
+- Fix: the highlighter's live stroke no longer renders opaque while
+  drawing — the in-progress stroke is composited directly on the canvas
+  instead of being re-drawn into the persistent ink layer every frame
+  (which stacked the translucent alpha to opaque); the eraser preview
+  still composites on the ink layer so it only clears ink.
 
 ## [1.0.0] - 2026-07-31
 

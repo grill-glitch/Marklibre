@@ -261,16 +261,22 @@ class DrawingCanvasView @JvmOverloads constructor(
             }
             canvas.drawBitmap(it, matrix, null)
         }
-        // Composite the in-progress stroke onto the ink layer so the eraser
-        // preview only clears ink - never the image below (a CLEAR path drawn
-        // on the main canvas would punch a transparent hole through the image,
-        // exposing the dark parent background as a black streak).
+        // Eraser preview composites onto the ink layer (CLEAR) so it only
+        // clears ink - never the image below (a CLEAR path drawn on the main
+        // canvas would punch a transparent hole through the image, exposing
+        // the dark parent background as a black streak).
+        // Pen/highlighter preview is drawn directly on the canvas instead:
+        // the persistent ink layer would re-composite the growing active
+        // path every frame, stacking the highlighter's alpha to opaque.
         val path = activePath
         val layer = inkLayer
-        if (path != null && layer != null) {
-            Canvas(layer).drawPath(path, strokePaint(activeStyle, activeColor, activeWidth))
+        if (path != null && activeStyle == StrokeStyle.ERASER) {
+            layer?.let { Canvas(it).drawPath(path, strokePaint(activeStyle, activeColor, activeWidth)) }
         }
         inkLayer?.let { canvas.drawBitmap(it, 0f, 0f, null) }
+        if (path != null && activeStyle != StrokeStyle.ERASER) {
+            canvas.drawPath(path, strokePaint(activeStyle, activeColor, activeWidth))
+        }
         selectedText?.let { drawSelection(canvas, it) }
     }
 
