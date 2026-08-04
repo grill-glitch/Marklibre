@@ -62,11 +62,14 @@
             android:tooltipText="@string/ink_color_white"
             app:ink_color="@color/ink_swatch_white" />
 
-        <org.librelab.marklibre.PaletteButton
+        <ImageView
             android:id="@+id/palette_button"
             style="@style/InkColorButton"
-            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:background="@drawable/palette_button_bg"
             android:contentDescription="@string/palette"
+            android:scaleType="centerInside"
+            android:src="@drawable/palette_24"
             android:tooltipText="@string/palette" />
     </LinearLayout>
 

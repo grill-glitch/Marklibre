@@ -14,6 +14,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.SeekBar
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -37,7 +38,7 @@ class ToolbarFragment : Fragment() {
     private lateinit var penWidthRow: View
     private lateinit var penWidthPreview: View
     private lateinit var penWidthSlider: SeekBar
-    private lateinit var paletteButton: PaletteButton
+    private lateinit var paletteButton: ImageView
     private lateinit var cropButton: ImageButton
     private lateinit var textButton: ImageButton
     private lateinit var eraserButton: ImageButton
@@ -249,11 +250,21 @@ class ToolbarFragment : Fragment() {
         // the palette button is "checked" only when the current color is a
         // custom one (not one of the presets)
         currentInkColor = color
-        paletteButton.checked = colorButtons.none { it.color == color }
-        paletteButton.color = color
+        updatePaletteButton()
         penButton.activeColor = color
         highlighterButton.activeColor = color
         updateWidthPreview()
+    }
+
+    /** Palette button: neutral ring idle; filled with the custom color when selected. */
+    private fun updatePaletteButton() {
+        val selected = colorButtons.none { it.color == currentInkColor }
+        val d = resources.displayMetrics.density
+        paletteButton.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setStroke((1.5f * d).toInt(), 0x669E9E9E.toInt())
+            setColor(if (selected) currentInkColor else Color.TRANSPARENT)
+        }
     }
 
     /** Highlights the pen width option matching [widthDp]. */
