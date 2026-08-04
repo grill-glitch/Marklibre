@@ -78,8 +78,8 @@ class AnnotateActivity : AppCompatActivity() {
         redoButton.isEnabled = false
 
         inputUri = intent.data ?: intent.clipData?.getItemAt(0)?.uri
+        // Used only to confirm before deleting a screenshot (see doDelete).
         isScreenshotSource = intent.getStringExtra("edit_source")?.equals("screenshot", true) == true
-        if (isScreenshotSource) saveButton.setText(R.string.share)
 
         if (inputUri == null) {
             Toast.makeText(this, R.string.image_load_failed, Toast.LENGTH_SHORT).show()

@@ -9,6 +9,8 @@ All notable changes to Marklibre are documented in this file.
 - **Rotate** — rotate the whole image 90° clockwise with one tap (bottom
   toolbar, next to the eraser). Ink is flattened into the image as a single
   undoable op, exactly like crop, so Undo restores the previous state.
+- The top-left button is always **Save** — it no longer switches to Share
+  when editing a screenshot; Share stays in the top-right.
 
 ## [1.0.0] - 2026-07-31
 
