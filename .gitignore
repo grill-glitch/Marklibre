@@ -12,3 +12,4 @@ local.properties
 !app/src/main/**/*.apk
 keystore.properties
 marklibre-release.keystore
+.hermes/desktop-attachments/
