@@ -387,7 +387,7 @@ class AnnotateActivity : AppCompatActivity() {
                 val flat = canvas.flattenFullRes()
                 val uri = saveToMediaStore(
                     flat,
-                    appPrefs.getBoolean("strip_on_save", true)
+                    appPrefs.getBoolean("strip_on_save", false)
                 )
                 runOnUiThread {
                     progress.visibility = View.GONE
@@ -513,7 +513,7 @@ class AnnotateActivity : AppCompatActivity() {
                 val flat = canvas.flattenFullRes()
                 val uri = saveToMediaStore(
                     flat,
-                    appPrefs.getBoolean("strip_on_save", true)
+                    appPrefs.getBoolean("strip_on_save", false)
                 )
                 runOnUiThread {
                     progress.visibility = View.GONE
@@ -627,7 +627,7 @@ class AnnotateActivity : AppCompatActivity() {
         val stripShare = view.findViewById<MaterialSwitch>(R.id.strip_on_share_switch)
         val stripSave = view.findViewById<MaterialSwitch>(R.id.strip_on_save_switch)
         stripShare.isChecked = appPrefs.getBoolean("strip_on_share", true)
-        stripSave.isChecked = appPrefs.getBoolean("strip_on_save", true)
+        stripSave.isChecked = appPrefs.getBoolean("strip_on_save", false)
         stripShare.setOnCheckedChangeListener { _, c ->
             appPrefs.edit().putBoolean("strip_on_share", c).apply()
         }
