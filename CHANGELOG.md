@@ -2,7 +2,7 @@
 
 All notable changes to Marklibre are documented in this file.
 
-## [1.2.1] - 2026-08-05
+## [1.2.2] - 2026-08-05
 
 ### Changed
 
@@ -16,6 +16,8 @@ All notable changes to Marklibre are documented in this file.
   (JPEG EXIF is preserved); sharing still strips metadata by default
   (switch defaults to on). Users who already toggled the switches keep
   their choice.
+
+## [1.2.1] - 2026-08-05
 
 ### Added
 
