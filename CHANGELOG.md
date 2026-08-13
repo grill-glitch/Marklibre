@@ -6,6 +6,11 @@ All notable changes to Marklibre are documented in this file.
 
 ### Changed
 
+- **Faster metadata strip** — removing metadata from a JPEG is now a fast
+  binary pass that drops the APP1 (Exif) segment without decoding or
+  re-encoding the pixels, and it runs on a worker thread (the button is
+  disabled while working) so the UI stays responsive; non-JPEG sources
+  still re-encode but also off the main thread.
 - **Save keeps metadata by default** — the "Strip metadata when saving"
   switch now defaults to off: saving keeps the source image's metadata
   (JPEG EXIF is preserved); sharing still strips metadata by default
