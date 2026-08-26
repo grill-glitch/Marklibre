@@ -387,8 +387,7 @@ class DrawingCanvasView @JvmOverloads constructor(
         val py = (y ?: (height - m.h) / 2f).coerceIn(8f, max(8f, height - m.h - 8f))
         val el = InkElement.Text(text, px, py, m.size, color, font)
         elements.add(el)
-        undoStack.addLast(CanvasOp.Add(el))
-        redoStack.clear()
+        pushUndo(CanvasOp.Add(el))
         selectText(el)
         renderInk()
         notifyUndo()
@@ -402,8 +401,7 @@ class DrawingCanvasView @JvmOverloads constructor(
         el.x = el.x.coerceIn(0f, max(0f, width - m.w))
         el.y = el.y.coerceIn(0f, max(0f, height - m.h))
         elements[idx] = el
-        undoStack.addLast(CanvasOp.EditText(old, el))
-        redoStack.clear()
+        pushUndo(CanvasOp.EditText(old, el))
         selectText(el)
         renderInk()
         notifyUndo()
@@ -425,13 +423,12 @@ class DrawingCanvasView @JvmOverloads constructor(
         val h = (r.bottom - r.top).toInt()
         if (w < 8 || h < 8) return
         val cropped = Bitmap.createBitmap(flat, l, t, w, h)
-        undoStack.addLast(
+        pushUndo(
             CanvasOp.ReplaceImage(
                 ImageState(src, ArrayList(elements)),
                 ImageState(cropped, emptyList())
             )
         )
-        redoStack.clear()
         source = cropped
         elements.clear()
         selectedText = null
@@ -451,13 +448,12 @@ class DrawingCanvasView @JvmOverloads constructor(
         val rot = Matrix().apply { postRotate(90f) }
         val rotated = Bitmap.createBitmap(flat, 0, 0, flat.width, flat.height, rot, true)
         flat.recycle()
-        undoStack.addLast(
+        pushUndo(
             CanvasOp.ReplaceImage(
                 ImageState(src, ArrayList(elements)),
                 ImageState(rotated, emptyList())
             )
         )
-        redoStack.clear()
         activePath = null
         source = rotated
         elements.clear()
@@ -513,6 +509,12 @@ class DrawingCanvasView @JvmOverloads constructor(
         if (i >= 0) elements[i] = new
     }
 
+    /** Pushes an op onto the undo stack; any new op invalidates the redo stack. */
+    private fun pushUndo(op: CanvasOp) {
+        undoStack.addLast(op)
+        redoStack.clear()
+    }
+
     private fun notifyUndo() {
         listener?.onUndoAvailability(undoStack.isNotEmpty(), redoStack.isNotEmpty())
     }
@@ -520,12 +522,16 @@ class DrawingCanvasView @JvmOverloads constructor(
     /** Re-pushes undo/redo availability to the listener (e.g. after a mode switch). */
     fun refreshUndoState() = notifyUndo()
 
-    /** Scale factor of the active gesture transform (1f when idle). */
-    private fun gestureScale(): Float {
+    /** Scale factor (length of the transformed x-basis vector) of a matrix. */
+    private fun Matrix.scaleFactor(): Float {
         val v = FloatArray(9)
-        gestureMatrix.getValues(v)
-        return hypot(v[Matrix.MSCALE_X], v[Matrix.MSKEW_Y]).coerceAtLeast(1e-4f)
+        getValues(v)
+        return hypot(v[Matrix.MSCALE_X], v[Matrix.MSKEW_Y])
     }
+
+    /** Scale factor of the active gesture transform (1f when idle). */
+    private fun gestureScale(): Float =
+        gestureMatrix.scaleFactor().coerceAtLeast(1e-4f)
 
     /**
      * Flattens source + ink into a full-resolution bitmap (source pixel size).
@@ -706,9 +712,7 @@ class DrawingCanvasView @JvmOverloads constructor(
         val (fx, fy) = pointerFocus(event)
         var ds = span / gestureSpanPrev
         // clamp total zoom to [0.2x, 8x] of the base fit scale
-        val v = FloatArray(9)
-        gestureMatrix.getValues(v)
-        val cur = hypot(v[Matrix.MSCALE_X], v[Matrix.MSKEW_Y]).coerceAtLeast(1e-4f)
+        val cur = gestureMatrix.scaleFactor().coerceAtLeast(1e-4f)
         val target = (cur * ds).coerceIn(0.2f, 8f)
         ds = target / cur
         // scale around the current focus, then follow the focus movement
@@ -731,9 +735,7 @@ class DrawingCanvasView @JvmOverloads constructor(
             // space, wrong); postConcat computes other*M = G*B (gesture on top).
             matrix.postConcat(gestureMatrix)
             matrix.invert(inverse)
-            val v = FloatArray(9)
-            gestureMatrix.getValues(v)
-            val s = hypot(v[Matrix.MSCALE_X], v[Matrix.MSKEW_Y])
+            val s = gestureMatrix.scaleFactor()
             for (el in elements) {
                 when (el) {
                     is InkElement.Stroke -> {
@@ -843,8 +845,7 @@ class DrawingCanvasView @JvmOverloads constructor(
         ) {
             return
         }
-        undoStack.addLast(CanvasOp.EditText(start, el))
-        redoStack.clear()
+        pushUndo(CanvasOp.EditText(start, el))
         notifyUndo()
     }
 
@@ -862,8 +863,7 @@ class DrawingCanvasView @JvmOverloads constructor(
         }
         dragStartState = null
         elements.removeAt(idx)
-        undoStack.addLast(CanvasOp.Remove(idx, el))
-        redoStack.clear()
+        pushUndo(CanvasOp.Remove(idx, el))
         selectedText = null
         renderInk()
         notifyUndo()
@@ -1108,8 +1108,7 @@ class DrawingCanvasView @JvmOverloads constructor(
         activePath = null
         val el = InkElement.Stroke(Path(path), activeColor, activeWidth, activeStyle)
         elements.add(el)
-        undoStack.addLast(CanvasOp.Add(el))
-        redoStack.clear()
+        pushUndo(CanvasOp.Add(el))
         renderInk()
         notifyUndo()
     }
