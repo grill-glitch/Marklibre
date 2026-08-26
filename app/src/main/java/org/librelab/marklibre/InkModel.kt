@@ -55,3 +55,24 @@ fun fontTypeface(name: String): Typeface = when (name) {
     "Soft" -> Typeface.create("sans-serif-light", Typeface.NORMAL)
     else -> Typeface.create("casual", Typeface.NORMAL)
 }
+
+/** Perceived brightness (0..255), used to pick black/white foregrounds. */
+fun Int.luminance(): Float =
+    0.299f * Color.red(this) + 0.587f * Color.green(this) + 0.114f * Color.blue(this)
+
+/**
+ * Icon tint for a toolbar tool button: an active brush shows its [inkColor],
+ * an active momentary tool (crop/text/eraser/rotate) shows [activeTint],
+ * an idle button shows [neutral].
+ */
+fun toolIconTint(
+    active: Boolean,
+    isInkTool: Boolean,
+    inkColor: Int,
+    activeTint: Int,
+    neutral: Int
+): Int = when {
+    active && isInkTool -> inkColor
+    active -> activeTint
+    else -> neutral
+}

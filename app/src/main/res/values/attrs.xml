@@ -4,7 +4,6 @@
         <attr name="ink_color" format="color" />
     </declare-styleable>
     <declare-styleable name="PenButton">
-        <attr name="tool_name" format="string" />
         <attr name="neutral_color" format="color" />
     </declare-styleable>
 </resources>

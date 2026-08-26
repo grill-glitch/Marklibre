@@ -18,7 +18,6 @@
     <string name="strip_on_save">Удалять метаданные при сохранении</string>
     <string name="metadata_cleared">Метаданные и местоположение удалены</string>
     <string name="metadata_none">Нет</string>
-    <string name="metadata_location_removed">Местоположение удалено</string>
     <string name="share">Поделиться</string>
     <string name="copy">Копировать</string>
     <string name="delete">Удалить</string>
@@ -49,17 +48,10 @@
     <string name="ink_color_blue">Синий</string>
     <string name="ink_color_purple">Фиолетовый</string>
     <string name="ink_color_white">Белый</string>
-    <string name="bold_font">Жирный</string>
-    <string name="classic_font">Классический</string>
-    <string name="modern_font">Современный</string>
-    <string name="script_font">Рукописный</string>
-    <string name="soft_font">Мягкий</string>
-    <string name="bubbly_font">Пузырчатый</string>
     <string name="drawing_canvas">Холст для рисования</string>
     <string name="image_load_failed">Не удалось загрузить изображение</string>
     <string name="image_save_failed">Не удалось сохранить изображение</string>
     <string name="delete_screenshot">Удалить скриншот?</string>
-    <string name="tool_selected">Выбрано</string>
     <string name="text_hint">Добавить текст</string>
     <string name="text_done">Готово</string>
     <string name="crop_confirm">Обрезать</string>

@@ -186,23 +186,15 @@ class ToolbarFragment : Fragment() {
         // width slider: 2..16 dp for the pen, 8..32 dp for the highlighter;
         // live preview bar mirrors the width
         currentTool = InkTool.PEN
-        penWidthSlider.max = (maxPenWidth - minPenWidth).toInt()
-        penWidthSlider.progress = (currentPenWidth - minPenWidth).toInt()
+        setSliderFor(InkTool.PEN)
         updateWidthPreview()
         penWidthSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
                 updateWidthPreview()
                 if (fromUser) {
-                    val w = if (currentTool == InkTool.HIGHLIGHTER) {
-                        minHighlighterWidth + progress
-                    } else {
-                        minPenWidth + progress
-                    }
-                    if (currentTool == InkTool.HIGHLIGHTER) {
-                        currentHighlighterWidth = w
-                    } else {
-                        currentPenWidth = w
-                    }
+                    val w = widthFor(currentTool, progress)
+                    if (currentTool == InkTool.HIGHLIGHTER) currentHighlighterWidth = w
+                    else currentPenWidth = w
                     callbacks?.onWidthSelected(w)
                 }
             }
@@ -224,19 +216,9 @@ class ToolbarFragment : Fragment() {
 
     private fun colorPanelChildren(): List<ColorButton> {
         val panel = view ?: return emptyList()
-        val vg = panel.findViewById<ViewGroup>(R.id.color_panel)
-        val out = ArrayList<ColorButton>()
         // the panel is a vertical stack (color row + pen width row), so the
-        // dots are nested one level down - walk recursively
-        fun walk(v: View) {
-            if (v is ColorButton) {
-                out.add(v)
-            } else if (v is ViewGroup) {
-                for (i in 0 until v.childCount) walk(v.getChildAt(i))
-            }
-        }
-        walk(vg)
-        return out
+        // dots are nested one level down - collect recursively
+        return panel.findViewById<ViewGroup>(R.id.color_panel).colorButtons()
     }
 
     fun setActiveTool(tool: InkTool) {
@@ -254,15 +236,7 @@ class ToolbarFragment : Fragment() {
         currentTool = tool
         penWidthRow.visibility =
             if (tool == InkTool.PEN || tool == InkTool.HIGHLIGHTER) View.VISIBLE else View.GONE
-        if (tool == InkTool.HIGHLIGHTER) {
-            penWidthSlider.max = (maxHighlighterWidth - minHighlighterWidth).toInt()
-            penWidthSlider.progress =
-                (currentHighlighterWidth - minHighlighterWidth).toInt().coerceIn(0, (maxHighlighterWidth - minHighlighterWidth).toInt())
-        } else if (tool == InkTool.PEN) {
-            penWidthSlider.max = (maxPenWidth - minPenWidth).toInt()
-            penWidthSlider.progress =
-                (currentPenWidth - minPenWidth).toInt().coerceIn(0, (maxPenWidth - minPenWidth).toInt())
-        }
+        setSliderFor(tool)
         updateWidthPreview()
 
         // tool-switch animation: the newly clicked tool gets a dim highlight
@@ -280,22 +254,16 @@ class ToolbarFragment : Fragment() {
 
     private fun animateIconTint(btn: View, tool: InkTool) {
         iconTintAnim?.cancel()
-        val from: Int
-        val to: Int
-        when (tool) {
-            InkTool.PEN -> {
-                from = penButton.neutralColor
-                to = penButton.activeColor
-            }
-            InkTool.HIGHLIGHTER -> {
-                from = highlighterButton.neutralColor
-                to = highlighterButton.activeColor
-            }
-            else -> {
-                from = onSurface
-                to = onPrimary
-            }
+        val isInkTool = tool == InkTool.PEN || tool == InkTool.HIGHLIGHTER
+        val inkColor = when (tool) {
+            InkTool.PEN -> penButton.activeColor
+            InkTool.HIGHLIGHTER -> highlighterButton.activeColor
+            else -> 0
         }
+        // PenButton.neutralColor always resolves from ?attr/colorOnSurface,
+        // so onSurface is the equivalent neutral for every tool.
+        val from = toolIconTint(false, isInkTool, inkColor, onPrimary, onSurface)
+        val to = toolIconTint(true, isInkTool, inkColor, onPrimary, onSurface)
         (btn as? ImageButton)?.imageTintList = ColorStateList.valueOf(from)
         iconTintAnim = ValueAnimator.ofObject(ArgbEvaluator(), from, to).apply {
             duration = 120
@@ -349,7 +317,7 @@ class ToolbarFragment : Fragment() {
 
     private fun applyButtonState(button: ImageButton, active: Boolean) {
         button.imageTintList = ColorStateList.valueOf(
-            if (active) onPrimary else onSurface
+            toolIconTint(active, false, 0, onPrimary, onSurface)
         )
     }
 
@@ -373,9 +341,7 @@ class ToolbarFragment : Fragment() {
     }
 
     fun setSelectedColor(color: Int) {
-        for (cb in colorButtons) {
-            cb.checked = cb.color == color
-        }
+        colorButtons.checkOnly(color)
         // the palette button is "checked" only when the current color is a
         // custom one (not one of the presets)
         currentInkColor = color
@@ -408,19 +374,42 @@ class ToolbarFragment : Fragment() {
         val tint = if (!selected) {
             requireContext().themeColor(com.google.android.material.R.attr.colorOnSurface)
         } else {
-            val lum = 0.299f * Color.red(currentInkColor) +
-                0.587f * Color.green(currentInkColor) +
-                0.114f * Color.blue(currentInkColor)
-            if (lum > 140f) Color.BLACK else Color.WHITE
+            if (currentInkColor.luminance() > 140f) Color.BLACK else Color.WHITE
         }
         paletteButton.imageTintList = ColorStateList.valueOf(tint)
+    }
+
+    /** Width (dp) the slider progress represents for [tool]. */
+    private fun widthFor(tool: InkTool, progress: Int): Float =
+        if (tool == InkTool.HIGHLIGHTER) minHighlighterWidth + progress
+        else minPenWidth + progress
+
+    /** Slider progress for [widthDp] of [tool] (clamped to the range). */
+    private fun progressFor(tool: InkTool, widthDp: Float): Int =
+        if (tool == InkTool.HIGHLIGHTER) {
+            (widthDp - minHighlighterWidth).toInt()
+                .coerceIn(0, (maxHighlighterWidth - minHighlighterWidth).toInt())
+        } else {
+            (widthDp - minPenWidth).toInt()
+                .coerceIn(0, (maxPenWidth - minPenWidth).toInt())
+        }
+
+    /** Sets the slider range + value for [tool] (2..16 dp pen, 8..32 dp highlighter). */
+    private fun setSliderFor(tool: InkTool) {
+        penWidthSlider.max =
+            if (tool == InkTool.HIGHLIGHTER) (maxHighlighterWidth - minHighlighterWidth).toInt()
+            else (maxPenWidth - minPenWidth).toInt()
+        penWidthSlider.progress = progressFor(
+            tool,
+            if (tool == InkTool.HIGHLIGHTER) currentHighlighterWidth else currentPenWidth
+        )
     }
 
     /** Highlights the pen width option matching [widthDp]. */
     fun setSelectedPenWidth(widthDp: Float) {
         currentPenWidth = widthDp
         if (currentTool == InkTool.PEN) {
-            penWidthSlider.progress = (widthDp - minPenWidth).toInt().coerceIn(0, 14)
+            penWidthSlider.progress = progressFor(InkTool.PEN, widthDp)
         }
         updateWidthPreview()
     }
@@ -429,20 +418,14 @@ class ToolbarFragment : Fragment() {
     fun setSelectedHighlighterWidth(widthDp: Float) {
         currentHighlighterWidth = widthDp
         if (currentTool == InkTool.HIGHLIGHTER) {
-            penWidthSlider.progress =
-                (widthDp - minHighlighterWidth).toInt()
-                    .coerceIn(0, (maxHighlighterWidth - minHighlighterWidth).toInt())
+            penWidthSlider.progress = progressFor(InkTool.HIGHLIGHTER, widthDp)
         }
         updateWidthPreview()
     }
 
     /** Renders the live width preview bar (height = current width, rounded). */
     private fun updateWidthPreview() {
-        val widthDp = if (currentTool == InkTool.HIGHLIGHTER) {
-            minHighlighterWidth + penWidthSlider.progress
-        } else {
-            minPenWidth + penWidthSlider.progress
-        }
+        val widthDp = widthFor(currentTool, penWidthSlider.progress)
         val h = (widthDp * 1.5f * resources.displayMetrics.density).coerceIn(4f, 130f)
         penWidthPreview.layoutParams = penWidthPreview.layoutParams.apply { height = h.toInt() }
         val stroke = 1.5f * resources.displayMetrics.density

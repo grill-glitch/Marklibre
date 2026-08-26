@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
+import android.view.ViewGroup
 
 class ColorButton @JvmOverloads constructor(
     context: Context,
@@ -69,4 +70,23 @@ class ColorButton @JvmOverloads constructor(
             canvas.drawCircle(cx, cy, r - 2.5f * density, halo)
         }
     }
+}
+
+/** All [ColorButton] descendants of this ViewGroup (recursive). */
+fun ViewGroup.colorButtons(): List<ColorButton> {
+    val out = ArrayList<ColorButton>()
+    fun walk(v: View) {
+        if (v is ColorButton) {
+            out.add(v)
+        } else if (v is ViewGroup) {
+            for (i in 0 until v.childCount) walk(v.getChildAt(i))
+        }
+    }
+    walk(this)
+    return out
+}
+
+/** Marks only the swatch with [color] as checked. */
+fun List<ColorButton>.checkOnly(color: Int) {
+    for (cb in this) cb.checked = cb.color == color
 }

@@ -8,6 +8,4 @@
     <color name="ink_swatch_purple">#D500F9</color>
     <color name="ink_swatch_white">#FAFAFA</color>
     <color name="text_editor_scrim">#A333</color>
-    <color name="crop_dim">#99000000</color>
-    <color name="crop_handle">#FFFFFFFF</color>
 </resources>

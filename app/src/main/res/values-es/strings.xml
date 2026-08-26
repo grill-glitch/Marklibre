@@ -18,7 +18,6 @@
     <string name="strip_on_save">Eliminar metadatos al guardar</string>
     <string name="metadata_cleared">Metadatos y ubicación eliminados</string>
     <string name="metadata_none">Ninguno</string>
-    <string name="metadata_location_removed">Ubicación eliminada</string>
     <string name="share">Compartir</string>
     <string name="copy">Copiar</string>
     <string name="delete">Eliminar</string>
@@ -49,17 +48,10 @@
     <string name="ink_color_blue">Azul</string>
     <string name="ink_color_purple">Púrpura</string>
     <string name="ink_color_white">Blanco</string>
-    <string name="bold_font">Negrita</string>
-    <string name="classic_font">Fuente clásica</string>
-    <string name="modern_font">Fuente moderna</string>
-    <string name="script_font">Fuente manuscrita</string>
-    <string name="soft_font">Fuente suave</string>
-    <string name="bubbly_font">Fuente burbuja</string>
     <string name="drawing_canvas">Lienzo de dibujo</string>
     <string name="image_load_failed">No se puede cargar la imagen</string>
     <string name="image_save_failed">No se pudo guardar la imagen</string>
     <string name="delete_screenshot">¿Eliminar captura?</string>
-    <string name="tool_selected">Seleccionado</string>
     <string name="text_hint">Añadir texto</string>
     <string name="text_done">Listo</string>
     <string name="crop_confirm">Recortar</string>

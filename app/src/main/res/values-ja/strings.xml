@@ -18,7 +18,6 @@
     <string name="strip_on_save">保存時にメタデータを削除</string>
     <string name="metadata_cleared">メタデータと位置情報を削除しました</string>
     <string name="metadata_none">なし</string>
-    <string name="metadata_location_removed">位置情報を削除しました</string>
     <string name="share">共有</string>
     <string name="copy">コピー</string>
     <string name="delete">削除</string>
@@ -49,17 +48,10 @@
     <string name="ink_color_blue">青</string>
     <string name="ink_color_purple">紫</string>
     <string name="ink_color_white">白</string>
-    <string name="bold_font">太字</string>
-    <string name="classic_font">クラシック</string>
-    <string name="modern_font">モダン</string>
-    <string name="script_font">手書き</string>
-    <string name="soft_font">ソフト</string>
-    <string name="bubbly_font">バブル</string>
     <string name="drawing_canvas">描画キャンバス</string>
     <string name="image_load_failed">画像を読み込めません</string>
     <string name="image_save_failed">画像の保存に失敗しました</string>
     <string name="delete_screenshot">スクリーンショットを削除しますか?</string>
-    <string name="tool_selected">選択済み</string>
     <string name="text_hint">テキストを追加</string>
     <string name="text_done">完了</string>
     <string name="crop_confirm">トリミング</string>

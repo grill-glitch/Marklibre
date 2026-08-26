@@ -58,7 +58,6 @@
                 android:layout_gravity="center"
                 android:contentDescription="@string/ink_pen"
                 app:neutral_color="?attr/colorOnSurface"
-                app:tool_name="@string/ink_pen"
                 android:tooltipText="@string/ink_pen" />
 
             <org.librelab.marklibre.PenButton
@@ -67,7 +66,6 @@
                 android:layout_gravity="center"
                 android:contentDescription="@string/ink_highlighter"
                 app:neutral_color="?attr/colorOnSurface"
-                app:tool_name="@string/ink_highlighter"
                 android:tooltipText="@string/ink_highlighter" />
 
             <ImageButton

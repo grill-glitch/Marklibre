@@ -5,12 +5,16 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import org.librelab.marklibre.ColorButton
 import org.librelab.marklibre.DrawingCanvasView
+import org.librelab.marklibre.checkOnly
+import org.librelab.marklibre.colorButtons
+import org.librelab.marklibre.toolIconTint
 import org.librelab.marklibre.InkTool
 import org.librelab.marklibre.R
 import org.librelab.marklibre.themeColor
@@ -48,13 +52,15 @@ class StickerActivity : AppCompatActivity() {
             activeTool = active
             fun apply(btn: ImageButton) {
                 btn.background = if (active === btn) ring else defaultBg
-                val tint = when {
-                    // the highlighted brush itself shows the current ink color
-                    active === btn && (btn === pen || btn === highlighter) -> canvas.color
-                    active === btn -> onPrimary
-                    else -> neutral
-                }
-                btn.imageTintList = android.content.res.ColorStateList.valueOf(tint)
+                btn.imageTintList = android.content.res.ColorStateList.valueOf(
+                    toolIconTint(
+                        active === btn,
+                        btn === pen || btn === highlighter,
+                        canvas.color,
+                        onPrimary,
+                        neutral
+                    )
+                )
             }
             apply(pen)
             apply(highlighter)
@@ -65,15 +71,11 @@ class StickerActivity : AppCompatActivity() {
         highlighter.setOnClickListener { canvas.tool = InkTool.HIGHLIGHTER; highlight(highlighter) }
         eraser.setOnClickListener { canvas.tool = InkTool.ERASER; highlight(eraser) }
 
-        val colorButtons = (0 until (findViewById<View>(R.id.sticker_colors) as android.view.ViewGroup).childCount)
-            .mapNotNull { i ->
-                (findViewById<View>(R.id.sticker_colors) as android.view.ViewGroup)
-                    .getChildAt(i) as? ColorButton
-            }
+        val colorButtons = findViewById<ViewGroup>(R.id.sticker_colors).colorButtons()
         for (cb in colorButtons) {
             cb.setOnClickListener {
                 canvas.color = cb.color
-                for (other in colorButtons) other.checked = other === cb
+                colorButtons.checkOnly(cb.color)
                 highlight(activeTool)
             }
         }

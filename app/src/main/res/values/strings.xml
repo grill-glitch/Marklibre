@@ -18,7 +18,6 @@
     <string name="strip_on_save">Strip metadata when saving</string>
     <string name="metadata_cleared">Metadata and location removed</string>
     <string name="metadata_none">None</string>
-    <string name="metadata_location_removed">Location removed</string>
     <string name="share">Share</string>
     <string name="copy">Copy</string>
     <string name="delete">Delete</string>
@@ -49,17 +48,10 @@
     <string name="ink_color_blue">Blue</string>
     <string name="ink_color_purple">Purple</string>
     <string name="ink_color_white">White</string>
-    <string name="bold_font">Bold Font</string>
-    <string name="classic_font">Classic Font</string>
-    <string name="modern_font">Modern Font</string>
-    <string name="script_font">Script Font</string>
-    <string name="soft_font">Soft Font</string>
-    <string name="bubbly_font">Bubbly Font</string>
     <string name="drawing_canvas">Drawing canvas</string>
     <string name="image_load_failed">Image cannot be loaded</string>
     <string name="image_save_failed">Failed to save image</string>
     <string name="delete_screenshot">Delete screenshot?</string>
-    <string name="tool_selected">Selected</string>
     <string name="text_hint">Add text</string>
     <string name="text_done">Done</string>
     <string name="crop_confirm">Crop</string>

@@ -16,6 +16,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import org.librelab.marklibre.ColorButton
 import org.librelab.marklibre.FONT_NAMES
+import org.librelab.marklibre.checkOnly
+import org.librelab.marklibre.colorButtons
 import org.librelab.marklibre.InkElement
 import org.librelab.marklibre.R
 import org.librelab.marklibre.fontTypeface
@@ -75,13 +77,11 @@ class TextEditorFragment : Fragment() {
         }
 
         // color row
-        val colorButtons = (0 until colorList.childCount).mapNotNull { i ->
-            colorList.getChildAt(i) as? ColorButton
-        }
+        val colorButtons = colorList.colorButtons()
         for (cb in colorButtons) {
             cb.setOnClickListener {
                 textColor = cb.color
-                for (other in colorButtons) other.checked = other === cb
+                colorButtons.checkOnly(textColor)
                 textInput.setTextColor(textColor)
             }
         }
@@ -159,9 +159,6 @@ class TextEditorFragment : Fragment() {
 
     private fun refreshColorHighlight() {
         val colorList = view?.findViewById<LinearLayout>(R.id.color_list) ?: return
-        for (i in 0 until colorList.childCount) {
-            val cb = colorList.getChildAt(i) as? ColorButton ?: continue
-            cb.checked = cb.color == textColor
-        }
+        colorList.colorButtons().checkOnly(textColor)
     }
 }
