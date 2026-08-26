@@ -254,22 +254,16 @@ class ToolbarFragment : Fragment() {
 
     private fun animateIconTint(btn: View, tool: InkTool) {
         iconTintAnim?.cancel()
-        val from: Int
-        val to: Int
-        when (tool) {
-            InkTool.PEN -> {
-                from = penButton.neutralColor
-                to = penButton.activeColor
-            }
-            InkTool.HIGHLIGHTER -> {
-                from = highlighterButton.neutralColor
-                to = highlighterButton.activeColor
-            }
-            else -> {
-                from = onSurface
-                to = onPrimary
-            }
+        val isInkTool = tool == InkTool.PEN || tool == InkTool.HIGHLIGHTER
+        val inkColor = when (tool) {
+            InkTool.PEN -> penButton.activeColor
+            InkTool.HIGHLIGHTER -> highlighterButton.activeColor
+            else -> 0
         }
+        // PenButton.neutralColor always resolves from ?attr/colorOnSurface,
+        // so onSurface is the equivalent neutral for every tool.
+        val from = toolIconTint(false, isInkTool, inkColor, onPrimary, onSurface)
+        val to = toolIconTint(true, isInkTool, inkColor, onPrimary, onSurface)
         (btn as? ImageButton)?.imageTintList = ColorStateList.valueOf(from)
         iconTintAnim = ValueAnimator.ofObject(ArgbEvaluator(), from, to).apply {
             duration = 120
@@ -323,7 +317,7 @@ class ToolbarFragment : Fragment() {
 
     private fun applyButtonState(button: ImageButton, active: Boolean) {
         button.imageTintList = ColorStateList.valueOf(
-            if (active) onPrimary else onSurface
+            toolIconTint(active, false, 0, onPrimary, onSurface)
         )
     }
 

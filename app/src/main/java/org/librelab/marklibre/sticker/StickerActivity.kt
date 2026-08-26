@@ -14,6 +14,7 @@ import org.librelab.marklibre.ColorButton
 import org.librelab.marklibre.DrawingCanvasView
 import org.librelab.marklibre.checkOnly
 import org.librelab.marklibre.colorButtons
+import org.librelab.marklibre.toolIconTint
 import org.librelab.marklibre.InkTool
 import org.librelab.marklibre.R
 import org.librelab.marklibre.themeColor
@@ -51,13 +52,15 @@ class StickerActivity : AppCompatActivity() {
             activeTool = active
             fun apply(btn: ImageButton) {
                 btn.background = if (active === btn) ring else defaultBg
-                val tint = when {
-                    // the highlighted brush itself shows the current ink color
-                    active === btn && (btn === pen || btn === highlighter) -> canvas.color
-                    active === btn -> onPrimary
-                    else -> neutral
-                }
-                btn.imageTintList = android.content.res.ColorStateList.valueOf(tint)
+                btn.imageTintList = android.content.res.ColorStateList.valueOf(
+                    toolIconTint(
+                        active === btn,
+                        btn === pen || btn === highlighter,
+                        canvas.color,
+                        onPrimary,
+                        neutral
+                    )
+                )
             }
             apply(pen)
             apply(highlighter)
