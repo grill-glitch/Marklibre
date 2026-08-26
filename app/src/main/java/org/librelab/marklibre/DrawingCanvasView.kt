@@ -422,19 +422,7 @@ class DrawingCanvasView @JvmOverloads constructor(
         val w = (r.right - r.left).toInt()
         val h = (r.bottom - r.top).toInt()
         if (w < 8 || h < 8) return
-        val cropped = Bitmap.createBitmap(flat, l, t, w, h)
-        pushUndo(
-            CanvasOp.ReplaceImage(
-                ImageState(src, ArrayList(elements)),
-                ImageState(cropped, emptyList())
-            )
-        )
-        source = cropped
-        elements.clear()
-        selectedText = null
-        computeMatrix()
-        renderInk()
-        notifyUndo()
+        replaceSourceWith(Bitmap.createBitmap(flat, l, t, w, h))
     }
 
     /**
@@ -443,19 +431,28 @@ class DrawingCanvasView @JvmOverloads constructor(
      * ink becomes pixels, and undo restores the previous vector elements.
      */
     fun rotateImage() {
-        val src = source ?: return
+        if (source == null) return  // sticker mode has no image to rotate
         val flat = flattenFullRes()
         val rot = Matrix().apply { postRotate(90f) }
         val rotated = Bitmap.createBitmap(flat, 0, 0, flat.width, flat.height, rot, true)
         flat.recycle()
+        replaceSourceWith(rotated)
+    }
+
+    /**
+     * Replaces the whole canvas state with a flattened [newSource] bitmap
+     * (crop / rotate). The previous image + element list is snapshotted as
+     * one undoable ReplaceImage op; undo restores the full prior state.
+     */
+    private fun replaceSourceWith(newSource: Bitmap) {
         pushUndo(
             CanvasOp.ReplaceImage(
-                ImageState(src, ArrayList(elements)),
-                ImageState(rotated, emptyList())
+                ImageState(source, ArrayList(elements)),
+                ImageState(newSource, emptyList())
             )
         )
         activePath = null
-        source = rotated
+        source = newSource
         elements.clear()
         selectedText = null
         computeMatrix()
