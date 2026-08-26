@@ -608,24 +608,7 @@ class AnnotateActivity : AppCompatActivity() {
                 contentResolver.openInputStream(it)?.use { s -> s.readBytes() }
             }.getOrNull()
         } ?: return null
-        var i = 2
-        while (i + 4 <= data.size) {
-            if (data[i] != 0xFF.toByte()) break
-            val marker = data[i + 1].toInt() and 0xFF
-            if (marker == 0xD8) { i += 2; continue }        // SOI
-            if (marker == 0xD9 || marker == 0xDA) return null // EOI / SOS: no APP1
-            val len = ((data[i + 2].toInt() and 0xFF) shl 8) or (data[i + 3].toInt() and 0xFF)
-            if (marker == 0xE1) {
-                val seg = data.copyOfRange(i, i + 2 + len)
-                return if (seg.size > 10 && String(seg, 4, 6, Charsets.US_ASCII) == "Exif\u0000\u0000") {
-                    seg
-                } else {
-                    null
-                }
-            }
-            i += 2 + len
-        }
-        return null
+        return Jpeg.readApp1Exif(data)
     }
 
     // ---------- quick reference (metadata + location) ----------
@@ -761,7 +744,7 @@ class AnnotateActivity : AppCompatActivity() {
                 val f = File(uri.path ?: return false)
                 if (sourceFormat() == Bitmap.CompressFormat.JPEG) {
                     val data = f.readBytes()
-                    val stripped = stripJpegExif(data)
+                    val stripped = Jpeg.stripExif(data)
                     FileOutputStream(f).use { it.write(stripped) }
                     true
                 } else {
@@ -772,7 +755,7 @@ class AnnotateActivity : AppCompatActivity() {
             } else {
                 val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return false
                 val outBytes = if (sourceFormat() == Bitmap.CompressFormat.JPEG) {
-                    stripJpegExif(bytes)
+                    Jpeg.stripExif(bytes)
                 } else {
                     val bm = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return false
                     val bos = ByteArrayOutputStream()
@@ -787,45 +770,4 @@ class AnnotateActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Returns [data] with every APP1 (Exif) segment removed. Fast byte pass:
-     * markers are walked, Exif APP1 segments dropped entirely (marker +
-     * payload), everything else (SOF/DHT/SOS/entropy data) copied verbatim.
-     */
-    private fun stripJpegExif(data: ByteArray): ByteArray {
-        val out = ByteArrayOutputStream(data.size)
-        var i = 0
-        val n = data.size
-        while (i + 4 <= n) {
-            if (data[i] != 0xFF.toByte()) break
-            val marker = data[i + 1].toInt() and 0xFF
-            if (marker == 0xD8) {                   // SOI
-                out.write(data[i].toInt())
-                out.write(data[i + 1].toInt())
-                i += 2
-                continue
-            }
-            if (marker == 0xD9) {                   // EOI
-                out.write(data[i].toInt())
-                out.write(data[i + 1].toInt())
-                break
-            }
-            val len = ((data[i + 2].toInt() and 0xFF) shl 8) or
-                (data[i + 3].toInt() and 0xFF)
-            val segStart = i + 4
-            if (marker == 0xDA) {                   // SOS: entropy data follows
-                out.write(data, i, n - i)
-                break
-            }
-            if (marker == 0xE1 && segStart + 6 <= n &&
-                String(data, segStart, 6, Charsets.US_ASCII) == "Exif\u0000\u0000"
-            ) {
-                i += 2 + len                        // drop the whole Exif segment
-                continue
-            }
-            out.write(data, i, 2 + len)
-            i += 2 + len
-        }
-        return out.toByteArray()
-    }
 }
