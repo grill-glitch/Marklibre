@@ -1,0 +1,43 @@
+// Marklibre — screenshot annotation editor (org.librelab.marklibre).
+//
+// Built from the release APK produced by the Gradle project at
+// https://github.com/grill-glitch/Marklibre (the whole ink engine is a
+// hand-rolled Canvas implementation; there is no Soong build path for it,
+// so the ROM consumes the signed APK as a prebuilt, exactly like the
+// LibreMessage integration).
+//
+// To update the prebuilt: build the release APK (./gradlew assembleRelease)
+// and copy app/build/outputs/apk/release/app-release.apk here as
+// Marklibre.apk, then rebuild the Marklibre module.
+
+package {
+    // See: http://go/android-license-faq
+    default_applicable_licenses: ["packages_apps_Marklibre_license"],
+}
+
+license {
+    name: "packages_apps_Marklibre_license",
+    visibility: [":__subpackages__"],
+    license_kinds: [
+        "SPDX-license-identifier-GPL-3.0",
+    ],
+    license_text: [
+        "LICENSE",
+    ],
+}
+
+android_app_import {
+    name: "Marklibre",
+    apk: "Marklibre.apk",
+
+    // Keep the developer's release signature: devices that already run
+    // the release APK can upgrade to the ROM build without wiping data,
+    // and the app stays updatable as a regular app. The signature-level
+    // SAVE_STICKER permission (declared in the app manifest) then works
+    // between the sticker flow and this same package.
+    presigned: true,
+    // targetSdkVersion >= 30 presigned APKs must be preprocessed (already
+    // zipaligned + v2-signed by Gradle) or the build system would wreck
+    // the signature.
+    preprocessed: true,
+}

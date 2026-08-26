@@ -10,6 +10,8 @@ local.properties
 .cxx
 *.apk
 !app/src/main/**/*.apk
+# the repo-root prebuilt is the ROM integration artifact - keep it
+!Marklibre.apk
 keystore.properties
 marklibre-release.keystore
 .hermes/desktop-attachments/

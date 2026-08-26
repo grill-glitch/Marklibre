@@ -2,6 +2,22 @@
 
 All notable changes to Marklibre are documented in this file.
 
+## [1.2.3] - 2026-08-26
+
+### Changed
+
+- **Maintenance pass (no UI/behavior change)** — a code-archaeology-driven
+  dedupe: text measurement converged into one helper (was inlined 13x),
+  the crop/rotate flatten-replace flow is shared, the JPEG Exif read and
+  strip paths now walk one shared segment parser, and the toolbar width /
+  icon-tint / color-swatch logic is centralized. Dead code and unused
+  resources removed. First unit tests added (JPEG Exif read/strip),
+  locked by `./gradlew testDebugUnitTest`.
+- Prebuilt `Marklibre.apk` + Soong `Android.bp` at the repo root so the
+  signed release APK can be dropped into a crDroid/LineageOS tree as a
+  system app (`packages/apps/Marklibre`), mirroring the LibreMessage
+  integration pattern.
+
 ## [1.2.2] - 2026-08-05
 
 ### Changed
