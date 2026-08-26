@@ -341,6 +341,18 @@ class AnnotateActivity : AppCompatActivity() {
         canvas.refreshUndoState()
     }
 
+    /**
+     * Save/share while the crop tool is still open: commit the pending crop
+     * first so the output matches what the user sees. Without this, tapping
+     * Save or Share mid-crop would silently save the uncropped image and
+     * drop the crop selection.
+     */
+    private fun commitPendingCrop() {
+        if (cropOverlay.visibility != View.VISIBLE) return
+        canvas.applyCrop(cropOverlay.rect)
+        exitCropMode()
+    }
+
     private fun loadImage(uri: Uri) {
         progress.visibility = View.VISIBLE
         Thread {
@@ -381,6 +393,7 @@ class AnnotateActivity : AppCompatActivity() {
     }
 
     private fun doSave() {
+        commitPendingCrop()
         progress.visibility = View.VISIBLE
         Thread {
             try {
@@ -476,6 +489,7 @@ class AnnotateActivity : AppCompatActivity() {
     }
 
     private fun doShare() {
+        commitPendingCrop()
         progress.visibility = View.VISIBLE
         Thread {
             try {
