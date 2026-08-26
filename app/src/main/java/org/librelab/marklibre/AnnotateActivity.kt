@@ -557,9 +557,6 @@ class AnnotateActivity : AppCompatActivity() {
         }
     }
 
-    private fun writePng(bm: Bitmap, subdir: String): File =
-        writeImage(bm, subdir, Bitmap.CompressFormat.PNG)
-
     private fun writeImage(bm: Bitmap, subdir: String, format: Bitmap.CompressFormat): File {
         val dir = File(cacheDir, subdir)
         dir.mkdirs()

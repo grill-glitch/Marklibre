@@ -154,8 +154,6 @@ class DrawingCanvasView @JvmOverloads constructor(
         return r
     }
 
-    fun isStickerMode(): Boolean = source == null
-
     /** True when there are unsaved edits (the undo stack is non-empty). */
     fun hasEdits(): Boolean = undoStack.isNotEmpty()
 
