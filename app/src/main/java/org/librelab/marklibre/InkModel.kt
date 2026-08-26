@@ -55,3 +55,7 @@ fun fontTypeface(name: String): Typeface = when (name) {
     "Soft" -> Typeface.create("sans-serif-light", Typeface.NORMAL)
     else -> Typeface.create("casual", Typeface.NORMAL)
 }
+
+/** Perceived brightness (0..255), used to pick black/white foregrounds. */
+fun Int.luminance(): Float =
+    0.299f * Color.red(this) + 0.587f * Color.green(this) + 0.114f * Color.blue(this)

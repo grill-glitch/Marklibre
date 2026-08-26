@@ -186,23 +186,15 @@ class ToolbarFragment : Fragment() {
         // width slider: 2..16 dp for the pen, 8..32 dp for the highlighter;
         // live preview bar mirrors the width
         currentTool = InkTool.PEN
-        penWidthSlider.max = (maxPenWidth - minPenWidth).toInt()
-        penWidthSlider.progress = (currentPenWidth - minPenWidth).toInt()
+        setSliderFor(InkTool.PEN)
         updateWidthPreview()
         penWidthSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
                 updateWidthPreview()
                 if (fromUser) {
-                    val w = if (currentTool == InkTool.HIGHLIGHTER) {
-                        minHighlighterWidth + progress
-                    } else {
-                        minPenWidth + progress
-                    }
-                    if (currentTool == InkTool.HIGHLIGHTER) {
-                        currentHighlighterWidth = w
-                    } else {
-                        currentPenWidth = w
-                    }
+                    val w = widthFor(currentTool, progress)
+                    if (currentTool == InkTool.HIGHLIGHTER) currentHighlighterWidth = w
+                    else currentPenWidth = w
                     callbacks?.onWidthSelected(w)
                 }
             }
@@ -254,15 +246,7 @@ class ToolbarFragment : Fragment() {
         currentTool = tool
         penWidthRow.visibility =
             if (tool == InkTool.PEN || tool == InkTool.HIGHLIGHTER) View.VISIBLE else View.GONE
-        if (tool == InkTool.HIGHLIGHTER) {
-            penWidthSlider.max = (maxHighlighterWidth - minHighlighterWidth).toInt()
-            penWidthSlider.progress =
-                (currentHighlighterWidth - minHighlighterWidth).toInt().coerceIn(0, (maxHighlighterWidth - minHighlighterWidth).toInt())
-        } else if (tool == InkTool.PEN) {
-            penWidthSlider.max = (maxPenWidth - minPenWidth).toInt()
-            penWidthSlider.progress =
-                (currentPenWidth - minPenWidth).toInt().coerceIn(0, (maxPenWidth - minPenWidth).toInt())
-        }
+        setSliderFor(tool)
         updateWidthPreview()
 
         // tool-switch animation: the newly clicked tool gets a dim highlight
@@ -408,19 +392,42 @@ class ToolbarFragment : Fragment() {
         val tint = if (!selected) {
             requireContext().themeColor(com.google.android.material.R.attr.colorOnSurface)
         } else {
-            val lum = 0.299f * Color.red(currentInkColor) +
-                0.587f * Color.green(currentInkColor) +
-                0.114f * Color.blue(currentInkColor)
-            if (lum > 140f) Color.BLACK else Color.WHITE
+            if (currentInkColor.luminance() > 140f) Color.BLACK else Color.WHITE
         }
         paletteButton.imageTintList = ColorStateList.valueOf(tint)
+    }
+
+    /** Width (dp) the slider progress represents for [tool]. */
+    private fun widthFor(tool: InkTool, progress: Int): Float =
+        if (tool == InkTool.HIGHLIGHTER) minHighlighterWidth + progress
+        else minPenWidth + progress
+
+    /** Slider progress for [widthDp] of [tool] (clamped to the range). */
+    private fun progressFor(tool: InkTool, widthDp: Float): Int =
+        if (tool == InkTool.HIGHLIGHTER) {
+            (widthDp - minHighlighterWidth).toInt()
+                .coerceIn(0, (maxHighlighterWidth - minHighlighterWidth).toInt())
+        } else {
+            (widthDp - minPenWidth).toInt()
+                .coerceIn(0, (maxPenWidth - minPenWidth).toInt())
+        }
+
+    /** Sets the slider range + value for [tool] (2..16 dp pen, 8..32 dp highlighter). */
+    private fun setSliderFor(tool: InkTool) {
+        penWidthSlider.max =
+            if (tool == InkTool.HIGHLIGHTER) (maxHighlighterWidth - minHighlighterWidth).toInt()
+            else (maxPenWidth - minPenWidth).toInt()
+        penWidthSlider.progress = progressFor(
+            tool,
+            if (tool == InkTool.HIGHLIGHTER) currentHighlighterWidth else currentPenWidth
+        )
     }
 
     /** Highlights the pen width option matching [widthDp]. */
     fun setSelectedPenWidth(widthDp: Float) {
         currentPenWidth = widthDp
         if (currentTool == InkTool.PEN) {
-            penWidthSlider.progress = (widthDp - minPenWidth).toInt().coerceIn(0, 14)
+            penWidthSlider.progress = progressFor(InkTool.PEN, widthDp)
         }
         updateWidthPreview()
     }
@@ -429,20 +436,14 @@ class ToolbarFragment : Fragment() {
     fun setSelectedHighlighterWidth(widthDp: Float) {
         currentHighlighterWidth = widthDp
         if (currentTool == InkTool.HIGHLIGHTER) {
-            penWidthSlider.progress =
-                (widthDp - minHighlighterWidth).toInt()
-                    .coerceIn(0, (maxHighlighterWidth - minHighlighterWidth).toInt())
+            penWidthSlider.progress = progressFor(InkTool.HIGHLIGHTER, widthDp)
         }
         updateWidthPreview()
     }
 
     /** Renders the live width preview bar (height = current width, rounded). */
     private fun updateWidthPreview() {
-        val widthDp = if (currentTool == InkTool.HIGHLIGHTER) {
-            minHighlighterWidth + penWidthSlider.progress
-        } else {
-            minPenWidth + penWidthSlider.progress
-        }
+        val widthDp = widthFor(currentTool, penWidthSlider.progress)
         val h = (widthDp * 1.5f * resources.displayMetrics.density).coerceIn(4f, 130f)
         penWidthPreview.layoutParams = penWidthPreview.layoutParams.apply { height = h.toInt() }
         val stroke = 1.5f * resources.displayMetrics.density

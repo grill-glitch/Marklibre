@@ -364,10 +364,7 @@ class DrawingCanvasView @JvmOverloads constructor(
         val icon = rotationIcon ?: ContextCompat.getDrawable(context, R.drawable.refresh_24)
             ?.mutate().also { rotationIcon = it }
         icon?.let { d ->
-            val lum = 0.299f * Color.red(el.color) +
-                0.587f * Color.green(el.color) +
-                0.114f * Color.blue(el.color)
-            d.setTint(if (lum > 140f) Color.BLACK else Color.WHITE)
+            d.setTint(if (el.color.luminance() > 140f) Color.BLACK else Color.WHITE)
             val isz = 16f * density
             d.bounds = Rect(
                 (x - isz / 2f).toInt(),
