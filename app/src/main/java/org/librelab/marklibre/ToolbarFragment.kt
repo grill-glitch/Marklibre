@@ -216,19 +216,9 @@ class ToolbarFragment : Fragment() {
 
     private fun colorPanelChildren(): List<ColorButton> {
         val panel = view ?: return emptyList()
-        val vg = panel.findViewById<ViewGroup>(R.id.color_panel)
-        val out = ArrayList<ColorButton>()
         // the panel is a vertical stack (color row + pen width row), so the
-        // dots are nested one level down - walk recursively
-        fun walk(v: View) {
-            if (v is ColorButton) {
-                out.add(v)
-            } else if (v is ViewGroup) {
-                for (i in 0 until v.childCount) walk(v.getChildAt(i))
-            }
-        }
-        walk(vg)
-        return out
+        // dots are nested one level down - collect recursively
+        return panel.findViewById<ViewGroup>(R.id.color_panel).colorButtons()
     }
 
     fun setActiveTool(tool: InkTool) {
@@ -357,9 +347,7 @@ class ToolbarFragment : Fragment() {
     }
 
     fun setSelectedColor(color: Int) {
-        for (cb in colorButtons) {
-            cb.checked = cb.color == color
-        }
+        colorButtons.checkOnly(color)
         // the palette button is "checked" only when the current color is a
         // custom one (not one of the presets)
         currentInkColor = color
