@@ -215,13 +215,38 @@ class DrawingCanvasView @JvmOverloads constructor(
             isSubpixelText = true
         }
 
-    private fun textBounds(el: InkElement.Text): RectF {
-        val p = textPaint(el.color, el.font, el.size)
-        val w = p.measureText(el.text)
+    /** Measured text dimensions (em-box: width, height = descent - ascent). */
+    private data class TextMetrics(val paint: Paint, val w: Float, val h: Float, val size: Float)
+
+    private fun textMetrics(el: InkElement.Text): TextMetrics =
+        textMetrics(el.color, el.font, el.size, el.text)
+
+    private fun textMetrics(color: Int, font: String, size: Float, text: String): TextMetrics {
+        val p = textPaint(color, font, size)
         // ascent() is negative: em-box height = descent - ascent
-        val h = p.descent() - p.ascent()
+        return TextMetrics(p, p.measureText(text), p.descent() - p.ascent(), size)
+    }
+
+    /**
+     * Measures [text] at [size], shrinking the size until the text fits the
+     * canvas width (used when creating/editing a text element).
+     */
+    private fun fitTextMetrics(text: String, color: Int, font: String, size: Float): TextMetrics {
+        var p = textPaint(color, font, size)
+        var w = p.measureText(text)
+        var effectiveSize = size
+        if (w > width - 16f) {
+            effectiveSize = size * (width - 16f) / w
+            p = textPaint(color, font, effectiveSize)
+            w = p.measureText(text)
+        }
+        return TextMetrics(p, w, p.descent() - p.ascent(), effectiveSize)
+    }
+
+    private fun textBounds(el: InkElement.Text): RectF {
+        val m = textMetrics(el)
         val pad = 12f * density
-        return RectF(el.x - pad, el.y - pad, el.x + w + pad, el.y + h + pad)
+        return RectF(el.x - pad, el.y - pad, el.x + m.w + pad, el.y + m.h + pad)
     }
 
     private fun renderInk() {
@@ -239,12 +264,11 @@ class DrawingCanvasView @JvmOverloads constructor(
             is InkElement.Stroke ->
                 c.drawPath(el.path, strokePaint(el.style, el.color, el.width))
             is InkElement.Text -> {
-                val p = textPaint(el.color, el.font, el.size)
+                val m = textMetrics(el)
+                val p = m.paint
                 if (el.rotation != 0f) {
-                    val w = p.measureText(el.text)
-                    val h = p.descent() - p.ascent()
                     c.save()
-                    c.rotate(el.rotation, el.x + w / 2f, el.y + h / 2f)
+                    c.rotate(el.rotation, el.x + m.w / 2f, el.y + m.h / 2f)
                     c.drawText(el.text, el.x, el.y - p.ascent(), p)
                     c.restore()
                 } else {
@@ -294,15 +318,13 @@ class DrawingCanvasView @JvmOverloads constructor(
     }
 
     private fun drawSelection(canvas: Canvas, el: InkElement.Text) {
-        val p = textPaint(el.color, el.font, el.size)
-        val w = p.measureText(el.text)
+        val m = textMetrics(el)
         // ascent() is negative: text spans [el.y, el.y + descent - ascent]
-        val h = p.descent() - p.ascent()
-        val rect = RectF(el.x - 6f * density, el.y - 6f * density, el.x + w + 6f * density, el.y + h + 6f * density)
+        val rect = RectF(el.x - 6f * density, el.y - 6f * density, el.x + m.w + 6f * density, el.y + m.h + 6f * density)
         val rotated = el.rotation != 0f
         if (rotated) {
             canvas.save()
-            canvas.rotate(el.rotation, el.x + w / 2f, el.y + h / 2f)
+            canvas.rotate(el.rotation, el.x + m.w / 2f, el.y + m.h / 2f)
         }
         // border + corner handles (small white circles)
         val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -360,19 +382,10 @@ class DrawingCanvasView @JvmOverloads constructor(
     // ---------- element ops ----------
 
     fun addText(text: String, x: Float?, y: Float?, color: Int, font: String) {
-        val size = 30f * density
-        var p = textPaint(color, font, size)
-        var w = p.measureText(text)
-        var effectiveSize = size
-        if (w > width - 16f) {
-            effectiveSize = size * (width - 16f) / w
-            p = textPaint(color, font, effectiveSize)
-            w = p.measureText(text)
-        }
-        val h = p.descent() - p.ascent()
-        val px = (x ?: (width - w) / 2f).coerceIn(8f, max(8f, width - w - 8f))
-        val py = (y ?: (height - h) / 2f).coerceIn(8f, max(8f, height - h - 8f))
-        val el = InkElement.Text(text, px, py, effectiveSize, color, font)
+        val m = fitTextMetrics(text, color, font, 30f * density)
+        val px = (x ?: (width - m.w) / 2f).coerceIn(8f, max(8f, width - m.w - 8f))
+        val py = (y ?: (height - m.h) / 2f).coerceIn(8f, max(8f, height - m.h - 8f))
+        val el = InkElement.Text(text, px, py, m.size, color, font)
         elements.add(el)
         undoStack.addLast(CanvasOp.Add(el))
         redoStack.clear()
@@ -384,19 +397,10 @@ class DrawingCanvasView @JvmOverloads constructor(
     fun updateText(old: InkElement.Text, text: String, color: Int, font: String) {
         val idx = elements.indexOf(old)
         if (idx < 0) return
-        val size = old.size
-        var p = textPaint(color, font, size)
-        var w = p.measureText(text)
-        var effectiveSize = size
-        if (w > width - 16f) {
-            effectiveSize = size * (width - 16f) / w
-            p = textPaint(color, font, effectiveSize)
-            w = p.measureText(text)
-        }
-        val h = p.descent() - p.ascent()
-        val el = InkElement.Text(text, old.x, old.y, effectiveSize, color, font, old.rotation)
-        el.x = el.x.coerceIn(0f, max(0f, width - w))
-        el.y = el.y.coerceIn(0f, max(0f, height - h))
+        val m = fitTextMetrics(text, color, font, old.size)
+        val el = InkElement.Text(text, old.x, old.y, m.size, color, font, old.rotation)
+        el.x = el.x.coerceIn(0f, max(0f, width - m.w))
+        el.y = el.y.coerceIn(0f, max(0f, height - m.h))
         elements[idx] = el
         undoStack.addLast(CanvasOp.EditText(old, el))
         redoStack.clear()
@@ -557,15 +561,14 @@ class DrawingCanvasView @JvmOverloads constructor(
                     ic.drawPath(p, strokePaint(el.style, el.color, el.width * gs * invK))
                 }
                 is InkElement.Text -> {
-                    val p = textPaint(el.color, el.font, el.size * gs * invK)
+                    val m = textMetrics(el.color, el.font, el.size * gs * invK, el.text)
+                    val p = m.paint
                     val pts = floatArrayOf(el.x, el.y)
                     gestureMatrix.mapPoints(pts)
                     inverse.mapPoints(pts)
                     if (el.rotation != 0f) {
-                        val w = p.measureText(el.text)
-                        val h = p.descent() - p.ascent()
                         ic.save()
-                        ic.rotate(el.rotation, pts[0] + w / 2f, pts[1] + h / 2f)
+                        ic.rotate(el.rotation, pts[0] + m.w / 2f, pts[1] + m.h / 2f)
                         ic.drawText(el.text, pts[0], pts[1] - p.ascent(), p)
                         ic.restore()
                     } else {
@@ -912,11 +915,9 @@ class DrawingCanvasView @JvmOverloads constructor(
     private fun toLocal(el: InkElement.Text, x: Float, y: Float): PointF {
         val rot = el.rotation
         if (rot == 0f) return PointF(x, y)
-        val p = textPaint(el.color, el.font, el.size)
-        val w = p.measureText(el.text)
-        val h = p.descent() - p.ascent()
-        val cx = el.x + w / 2f
-        val cy = el.y + h / 2f
+        val m = textMetrics(el)
+        val cx = el.x + m.w / 2f
+        val cy = el.y + m.h / 2f
         val dx = x - cx
         val dy = y - cy
         val rad = Math.toRadians((-rot).toDouble())
@@ -930,21 +931,17 @@ class DrawingCanvasView @JvmOverloads constructor(
 
     /** Rotation knob center in the text's local space (below the box). */
     private fun rotationKnob(el: InkElement.Text): PointF {
-        val p = textPaint(el.color, el.font, el.size)
-        val w = p.measureText(el.text)
-        val h = p.descent() - p.ascent()
+        val m = textMetrics(el)
         val pad = 6f * density
         val lineLen = 24f * density
-        return PointF(el.x + w / 2f, el.y + h + pad + lineLen)
+        return PointF(el.x + m.w / 2f, el.y + m.h + pad + lineLen)
     }
 
     private fun startRotation(el: InkElement.Text, x: Float, y: Float) {
         rotatingText = true
-        val p = textPaint(el.color, el.font, el.size)
-        val w = p.measureText(el.text)
-        val h = p.descent() - p.ascent()
-        val cx = el.x + w / 2f
-        val cy = el.y + h / 2f
+        val m = textMetrics(el)
+        val cx = el.x + m.w / 2f
+        val cy = el.y + m.h / 2f
         rotateStartAngle = Math.toDegrees(atan2(y - cy, x - cx).toDouble()).toFloat()
         rotateStartRotation = el.rotation
         performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -952,26 +949,22 @@ class DrawingCanvasView @JvmOverloads constructor(
 
     private fun rotateSelectedText(x: Float, y: Float) {
         val el = selectedText ?: return
-        val p = textPaint(el.color, el.font, el.size)
-        val w = p.measureText(el.text)
-        val h = p.descent() - p.ascent()
-        val cx = el.x + w / 2f
-        val cy = el.y + h / 2f
+        val m = textMetrics(el)
+        val cx = el.x + m.w / 2f
+        val cy = el.y + m.h / 2f
         val angle = Math.toDegrees(atan2(y - cy, x - cx).toDouble()).toFloat()
         el.rotation = rotateStartRotation + (angle - rotateStartAngle)
         renderInk()
     }
 
     private fun cornerAt(x: Float, y: Float, el: InkElement.Text): Int? {
-        val p = textPaint(el.color, el.font, el.size)
-        val w = p.measureText(el.text)
-        val h = p.descent() - p.ascent()
+        val m = textMetrics(el)
         val pad = 6f * density
         val corners = listOf(
             el.x - pad to el.y - pad,
-            el.x + w + pad to el.y - pad,
-            el.x - pad to el.y + h + pad,
-            el.x + w + pad to el.y + h + pad
+            el.x + m.w + pad to el.y - pad,
+            el.x - pad to el.y + m.h + pad,
+            el.x + m.w + pad to el.y + m.h + pad
         )
         val tol = 26f * density
         for ((i, c) in corners.withIndex()) {
@@ -981,15 +974,13 @@ class DrawingCanvasView @JvmOverloads constructor(
     }
 
     private fun startCornerResize(el: InkElement.Text, corner: Int, x: Float, y: Float) {
-        val p = textPaint(el.color, el.font, el.size)
-        val w = p.measureText(el.text)
-        val h = p.descent() - p.ascent()
+        val m = textMetrics(el)
         val pad = 6f * density
         val corners = listOf(
             PointF(el.x - pad, el.y - pad),
-            PointF(el.x + w + pad, el.y - pad),
-            PointF(el.x - pad, el.y + h + pad),
-            PointF(el.x + w + pad, el.y + h + pad)
+            PointF(el.x + m.w + pad, el.y - pad),
+            PointF(el.x - pad, el.y + m.h + pad),
+            PointF(el.x + m.w + pad, el.y + m.h + pad)
         )
         val c = corners[corner]
         // opposite corner stays fixed while scaling
@@ -1017,12 +1008,10 @@ class DrawingCanvasView @JvmOverloads constructor(
         if (ratio <= 0.05f) return
         val size = (resizeSize0 * ratio).coerceIn(10f * density, 200f * density)
         el.size = size
-        val p = textPaint(el.color, el.font, size)
-        val w = p.measureText(el.text)
-        val h = p.descent() - p.ascent()
+        val m = textMetrics(el)
         val pad = 6f * density
-        val wBox = w + 2 * pad
-        val hBox = h + 2 * pad
+        val wBox = m.w + 2 * pad
+        val hBox = m.h + 2 * pad
         // anchor on the OPPOSITE corner: it must not move while scaling
         when (corner) {
             0 -> { el.x = resizeOpposite.x - wBox + pad; el.y = resizeOpposite.y - hBox + pad }
