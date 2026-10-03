@@ -23,8 +23,8 @@ android {
         // needed (both would be dead configuration at this API level).
         minSdk = 35
         targetSdk = 36
-        versionCode = 237
-        versionName = "1.2.3"
+        versionCode = 238
+        versionName = "1.4.0"
     }
 
     signingConfigs {

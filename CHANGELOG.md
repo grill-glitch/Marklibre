@@ -2,6 +2,51 @@
 
 All notable changes to Marklibre are documented in this file.
 
+## [1.4.0] - 2026-10-03
+
+### Added
+
+- **Custom color picker rebuilt on Compose** — the palette panel behind the
+  palette button is now a Compose surface built on `compose-pipette`
+  (hue / saturation / brightness / opacity sliders + hex field) instead of
+  the hand-rolled View implementation. A transparency checkerboard sits
+  behind the Original/Current swatches and the opacity slider so the alpha
+  is readable, and the eyedropper samples live while held, committing the
+  last sample you touched when you let go.
+- **The palette panel has three states** — open, peek (only the
+  Original/Current row showing above the toolbar, clipped to the canvas) and
+  closed, animated with a non-linear overshoot.
+- **The last-used tool survives a restart** — tool, color (with whether it
+  came from a preset or the palette) and the pen/highlighter widths are
+  written on every change and restored on launch, together with the toolbar
+  highlight: a restored pen/highlighter brings the color row back, a
+  restored eraser/text does not, and a restored crop re-enters crop mode.
+
+### Changed
+
+- **Crop behaves like a tool** — the confirmation button is gone. Switching
+  to another tool, tapping a color, rotating, or saving/sharing commits the
+  pending crop; Cancel discards it. Leaving a committed crop puts the
+  toolbar back on the pen. Cancel moved into the empty strip below the
+  canvas so it no longer overlaps the tool row, and the color row is hidden
+  while cropping.
+- **Saving no longer blocks the UI** — the progress overlay appears before
+  the crop is committed; save and share bake the ink, crop and encode on a
+  worker thread, and the already-baked bitmap is written directly instead of
+  being flattened a second time.
+
+### Fixed
+
+- A cold start no longer re-anchors the toolbar highlight to the pen, so
+  every restored tool comes back with its own button highlighted.
+
+### Build
+
+- **R8 is enabled for release builds** (release only — debug stays
+  unminified): 18,035 -> 2,977 class definitions, debug APK 35.3 MB vs
+  release APK 4.8 MB. No `keep` or `dontwarn` rules were needed, and
+  multi-dex requires no configuration at minSdk 35.
+
 ## [1.2.3] - 2026-08-26
 
 ### Changed
