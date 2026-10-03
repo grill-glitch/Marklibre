@@ -18,6 +18,9 @@ android {
 
     defaultConfig {
         applicationId = "org.librelab.marklibre"
+        // minSdk 35 means D8/R8 emits native multidex on its own: no
+        // multiDexEnabled flag and no androidx.multidex dependency are
+        // needed (both would be dead configuration at this API level).
         minSdk = 35
         targetSdk = 36
         versionCode = 237
@@ -37,7 +40,14 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 shrinking, optimization and obfuscation, release only. The
+            // debug build type is left at the AGP defaults (no minification)
+            // so it stays easy to debug.
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             if (keystoreProps.isNotEmpty()) {
                 signingConfig = signingConfigs.getByName("release")
             }
