@@ -412,7 +412,6 @@ class DrawingCanvasView @JvmOverloads constructor(
     fun applyCrop(rect: RectF) {
         val src = source ?: return
         if (rect.width() < 16f || rect.height() < 16f) return
-        val flat = flattenFullRes()
         val r = RectF(rect)
         inverse.mapRect(r)
         r.left = r.left.coerceIn(0f, src.width.toFloat())
@@ -424,7 +423,14 @@ class DrawingCanvasView @JvmOverloads constructor(
         val w = (r.right - r.left).toInt()
         val h = (r.bottom - r.top).toInt()
         if (w < 8 || h < 8) return
-        replaceSourceWith(Bitmap.createBitmap(flat, l, t, w, h))
+        // With no ink there is nothing to bake in, so crop the source
+        // directly. flattenFullRes() allocates two full-resolution bitmaps
+        // and re-renders every element, and this runs on the main thread -
+        // doing it for a plain crop is what made Save-mid-crop stall.
+        val flat = if (elements.isEmpty()) src else flattenFullRes()
+        val cropped = Bitmap.createBitmap(flat, l, t, w, h)
+        if (flat !== src) flat.recycle()
+        replaceSourceWith(cropped)
     }
 
     /**

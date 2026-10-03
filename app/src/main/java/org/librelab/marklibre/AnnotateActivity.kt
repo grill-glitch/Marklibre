@@ -499,31 +499,47 @@ class AnnotateActivity : AppCompatActivity() {
     }
 
     private fun doSave() {
-        commitPendingCrop()
-        progress.visibility = View.VISIBLE
-        Thread {
-            try {
-                val flat = canvas.flattenFullRes()
-                val uri = saveToMediaStore(
-                    flat,
-                    appPrefs.getBoolean("strip_on_save", false)
-                )
-                runOnUiThread {
-                    progress.visibility = View.GONE
-                    val result = Intent().apply {
-                        data = uri
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    setResult(Activity.RESULT_OK, result)
-                    finish()
+        runAfterProgressShown {
+            commitPendingCrop()
+            Thread { saveInBackground() }.start()
+        }
+    }
+
+    private fun saveInBackground() {
+        try {
+            val flat = canvas.flattenFullRes()
+            val uri = saveToMediaStore(
+                flat,
+                appPrefs.getBoolean("strip_on_save", false)
+            )
+            runOnUiThread {
+                progress.visibility = View.GONE
+                val result = Intent().apply {
+                    data = uri
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-            } catch (e: Exception) {
-                runOnUiThread {
-                    progress.visibility = View.GONE
-                    Toast.makeText(this, R.string.image_save_failed, Toast.LENGTH_SHORT).show()
-                }
+                setResult(Activity.RESULT_OK, result)
+                finish()
             }
-        }.start()
+        } catch (e: Exception) {
+            runOnUiThread {
+                progress.visibility = View.GONE
+                Toast.makeText(this, R.string.image_save_failed, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /**
+     * Shows the progress overlay and runs [block] only once that overlay has
+     * actually reached the screen. Committing a pending crop flattens the
+     * whole image at full resolution on the main thread, so running it before
+     * the overlay was visible made Save/Share mid-crop stall with no feedback
+     * at all. The double postOnAnimation lands [block] in the frame after the
+     * one that draws the overlay.
+     */
+    private fun runAfterProgressShown(block: () -> Unit) {
+        progress.visibility = View.VISIBLE
+        progress.postOnAnimation { progress.postOnAnimation { block() } }
     }
 
     /**
@@ -595,35 +611,38 @@ class AnnotateActivity : AppCompatActivity() {
     }
 
     private fun doShare() {
-        commitPendingCrop()
-        progress.visibility = View.VISIBLE
-        Thread {
-            try {
-                val flat = canvas.flattenFullRes()
-                val strip = appPrefs.getBoolean("strip_on_share", true)
-                val format = sourceFormat()
-                val file = when {
-                    format == Bitmap.CompressFormat.JPEG && !strip ->
-                        writeJpegWithExif(flat, "edited")
-                    else -> writeImage(flat, "edited", format)
-                }
-                runOnUiThread {
-                    progress.visibility = View.GONE
-                    val uri = FileProvider.getUriForFile(this, "org.librelab.marklibre", file)
-                    val send = Intent(Intent.ACTION_SEND).apply {
-                        type = formatMime(format)
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    startActivity(Intent.createChooser(send, null))
-                }
-            } catch (e: IOException) {
-                runOnUiThread {
-                    progress.visibility = View.GONE
-                    Toast.makeText(this, R.string.image_save_failed, Toast.LENGTH_SHORT).show()
-                }
+        runAfterProgressShown {
+            commitPendingCrop()
+            Thread { shareInBackground() }.start()
+        }
+    }
+
+    private fun shareInBackground() {
+        try {
+            val flat = canvas.flattenFullRes()
+            val strip = appPrefs.getBoolean("strip_on_share", true)
+            val format = sourceFormat()
+            val file = when {
+                format == Bitmap.CompressFormat.JPEG && !strip ->
+                    writeJpegWithExif(flat, "edited")
+                else -> writeImage(flat, "edited", format)
             }
-        }.start()
+            runOnUiThread {
+                progress.visibility = View.GONE
+                val uri = FileProvider.getUriForFile(this, "org.librelab.marklibre", file)
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = formatMime(format)
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivity(Intent.createChooser(send, null))
+            }
+        } catch (e: IOException) {
+            runOnUiThread {
+                progress.visibility = View.GONE
+                Toast.makeText(this, R.string.image_save_failed, Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun doCopy() {
