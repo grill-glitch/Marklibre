@@ -392,7 +392,7 @@ class AnnotateActivity : AppCompatActivity() {
         cropActions.visibility = View.VISIBLE
         // Toolbar stays visible - crop is a regular tool now, not a mode
         // that hides the rest of the UI.
-        toolbarContainer?.visibility = View.VISIBLE
+        toolbarContainer.visibility = View.VISIBLE
         // The ink color is irrelevant while cropping, so the swatch row
         // would just be noise. Hide it (and the pen-width row, which is
         // already hidden for non-brush tools). Also drop any open
@@ -407,7 +407,7 @@ class AnnotateActivity : AppCompatActivity() {
     private fun exitCropMode(switchToolbarTo: InkTool? = InkTool.PEN) {
         cropOverlay.visibility = View.GONE
         cropActions.visibility = View.GONE
-        toolbarContainer?.visibility = View.VISIBLE
+        toolbarContainer.visibility = View.VISIBLE
         // Drop out of crop mode: the canvas needs to be in a drawable
         // state again. The toolbar button highlight is switched to
         // [switchToolbarTo] (defaults to PEN) only when the caller has
@@ -447,13 +447,30 @@ class AnnotateActivity : AppCompatActivity() {
     }
 
     /**
-     * Save/share while the crop tool is still open: commit the pending crop
-     * first so the output matches what the user sees. Without this, tapping
-     * Save or Share mid-crop would silently save the uncropped image and
-     * drop the crop selection.
+     * The crop rect while the crop overlay is open, else null. Copied so the
+     * result can be handed to a background thread without racing the
+     * overlay's live rect. Main thread only.
      */
-    private fun commitPendingCrop() {
-        commitCropIfActive()
+    private fun pendingCropRect(): RectF? =
+        if (cropOverlay.visibility == View.VISIBLE) RectF(cropOverlay.rect) else null
+
+    /**
+     * The bitmap to save / share, produced on the caller's background thread.
+     *
+     * A pending crop is committed here: computeCroppedSource bakes the ink in
+     * and crops without touching view state, and that already-baked result is
+     * what gets written - so the crop is neither dropped (saving mid-crop used
+     * to write the uncropped image) nor flattened twice. Only the bitmap swap
+     * is handed back to the main thread.
+     */
+    private fun bitmapForOutput(crop: RectF?): Bitmap {
+        val cropped = crop?.let { canvas.computeCroppedSource(it) }
+        if (cropped == null) return canvas.flattenFullRes()
+        runOnUiThread {
+            canvas.commitCroppedSource(cropped)
+            exitCropMode(InkTool.PEN)
+        }
+        return cropped
     }
 
     private fun loadImage(uri: Uri) {
@@ -504,16 +521,15 @@ class AnnotateActivity : AppCompatActivity() {
 
     private fun doSave() {
         runAfterProgressShown {
-            commitPendingCrop()
-            Thread { saveInBackground() }.start()
+            val crop = pendingCropRect()
+            Thread { saveInBackground(crop) }.start()
         }
     }
 
-    private fun saveInBackground() {
+    private fun saveInBackground(crop: RectF?) {
         try {
-            val flat = canvas.flattenFullRes()
             val uri = saveToMediaStore(
-                flat,
+                bitmapForOutput(crop),
                 appPrefs.getBoolean("strip_on_save", false)
             )
             runOnUiThread {
@@ -616,14 +632,14 @@ class AnnotateActivity : AppCompatActivity() {
 
     private fun doShare() {
         runAfterProgressShown {
-            commitPendingCrop()
-            Thread { shareInBackground() }.start()
+            val crop = pendingCropRect()
+            Thread { shareInBackground(crop) }.start()
         }
     }
 
-    private fun shareInBackground() {
+    private fun shareInBackground(crop: RectF?) {
         try {
-            val flat = canvas.flattenFullRes()
+            val flat = bitmapForOutput(crop)
             val strip = appPrefs.getBoolean("strip_on_share", true)
             val format = sourceFormat()
             val file = when {

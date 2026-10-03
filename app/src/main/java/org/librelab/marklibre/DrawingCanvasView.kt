@@ -409,9 +409,18 @@ class DrawingCanvasView @JvmOverloads constructor(
         notifyUndo()
     }
 
-    fun applyCrop(rect: RectF) {
-        val src = source ?: return
-        if (rect.width() < 16f || rect.height() < 16f) return
+    /**
+     * Bakes the ink in and crops to [rect] (view coordinates), returning the
+     * new full-resolution bitmap. Pure computation: it reads view state but
+     * never mutates it, so it is safe to call off the main thread - hand the
+     * result to [commitCroppedSource] on the main thread.
+     *
+     * Returns null when there is nothing to crop (no source, or a rect too
+     * small to be meaningful).
+     */
+    fun computeCroppedSource(rect: RectF): Bitmap? {
+        val src = source ?: return null
+        if (rect.width() < 16f || rect.height() < 16f) return null
         val r = RectF(rect)
         inverse.mapRect(r)
         r.left = r.left.coerceIn(0f, src.width.toFloat())
@@ -422,15 +431,22 @@ class DrawingCanvasView @JvmOverloads constructor(
         val t = r.top.toInt()
         val w = (r.right - r.left).toInt()
         val h = (r.bottom - r.top).toInt()
-        if (w < 8 || h < 8) return
+        if (w < 8 || h < 8) return null
         // With no ink there is nothing to bake in, so crop the source
-        // directly. flattenFullRes() allocates two full-resolution bitmaps
-        // and re-renders every element, and this runs on the main thread -
-        // doing it for a plain crop is what made Save-mid-crop stall.
+        // directly instead of allocating two more full-resolution bitmaps
+        // and re-rendering an empty element list.
         val flat = if (elements.isEmpty()) src else flattenFullRes()
         val cropped = Bitmap.createBitmap(flat, l, t, w, h)
         if (flat !== src) flat.recycle()
-        replaceSourceWith(cropped)
+        return cropped
+    }
+
+    /** Applies a bitmap from [computeCroppedSource] as the new source. */
+    fun commitCroppedSource(cropped: Bitmap) = replaceSourceWith(cropped)
+
+    /** [computeCroppedSource] + [commitCroppedSource] in a single main-thread step. */
+    fun applyCrop(rect: RectF) {
+        computeCroppedSource(rect)?.let { replaceSourceWith(it) }
     }
 
     /**
@@ -589,6 +605,7 @@ class DrawingCanvasView @JvmOverloads constructor(
             }
         }
         c.drawBitmap(ink, 0f, 0f, null)
+        ink.recycle()
         return out
     }
 
