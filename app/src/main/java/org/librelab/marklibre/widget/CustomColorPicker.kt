@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -70,7 +71,12 @@ import org.librelab.marklibre.R
  *
  * Colours come from `MaterialTheme.colorScheme`, which the caller sets to the
  * app's dynamic Material 3 scheme, so the popup matches the rest of the UI.
+ *
+ * Opts in to Material3's experimental slider `track` slot, which is the only
+ * supported way to paint a background layer under the track without
+ * reimplementing or resizing the control.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomColorPicker(
     initialColor: Int,
@@ -186,14 +192,40 @@ fun CustomColorPicker(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // The slider itself is untouched - same value, range, thumb and
+            // geometry. Only its `track` slot is replaced, so the
+            // checkerboard lands *under* the track the framework already
+            // draws rather than replacing the control.
+            val sliderColors = SliderDefaults.colors(
+                // The thumb stays fully opaque: it is the handle you grab,
+                // not a preview of the colour's alpha. Only the track under
+                // it is allowed to go see-through.
+                thumbColor = Color(argbNow or 0xFF000000.toInt()),
+                activeTrackColor = Color(argbNow),
+                // Transparent, otherwise the opaque inactive track would
+                // paint over the checkerboard drawn beneath it. At full
+                // alpha the active track still covers the whole width, so
+                // the slider looks exactly as it did before.
+                inactiveTrackColor = Color.Transparent,
+            )
             Slider(
                 value = alpha.toFloat(),
                 onValueChange = { alpha = it.toInt().coerceIn(0, 255) },
                 valueRange = 0f..255f,
-                colors = SliderDefaults.colors(
-                    thumbColor = Color(argbNow),
-                    activeTrackColor = Color(argbNow),
-                ),
+                colors = sliderColors,
+                track = { state ->
+                    // Pill-clipped so the pattern follows the track's
+                    // rounded ends instead of showing square corners.
+                    val trackBackground = Modifier
+                        .clip(RoundedCornerShape(percent = 50))
+                        .checkerboard()
+                    SliderDefaults.Track(
+                        sliderState = state,
+                        modifier = trackBackground,
+                        colors = sliderColors,
+                        enabled = true,
+                    )
+                },
             )
         }
 
