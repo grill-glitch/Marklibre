@@ -14,7 +14,9 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -27,6 +29,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.content.ContextCompat
+import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.Fragment
 import org.librelab.marklibre.widget.CustomColorPicker
 
@@ -61,7 +64,29 @@ class ToolbarFragment : Fragment() {
     private val paletteComposeView: ComposeView by lazy {
         requireActivity().findViewById<ComposeView>(R.id.palette_compose_view)
     }
+    private val paletteViewport: View by lazy {
+        requireActivity().findViewById<View>(R.id.palette_viewport)
+    }
     private var paletteInited = false
+
+    /**
+     * The three positions the palette panel can rest in. [PEEK] slides it
+     * down so only its top third stays visible above the toolbar - enough to
+     * stay reachable without covering the image being edited.
+     */
+    enum class PaletteState { CLOSED, OPEN, PEEK }
+
+    private var paletteState = PaletteState.CLOSED
+
+    /** Fraction of its own height the panel slides down when peeking. */
+    private val palettePeekSlide = 2f / 3f
+
+    // Non-linear transitions, tuned per direction: opening springs with a
+    // slight overshoot and is the slowest; peeking settles; closing is a
+    // quick accelerate away.
+    private val paletteOpenDurationMs = 320L
+    private val palettePeekDurationMs = 260L
+    private val paletteCloseDurationMs = 220L
 
     /** Color the picker opened with (for the Original swatch + Cancel). */
     private var paletteOriginalColor = Color.BLACK
@@ -321,9 +346,7 @@ class ToolbarFragment : Fragment() {
         highlighterButton.activeColor = color
         updateWidthPreview()
         // tapping a preset color closes the palette panel
-        if (palettePanel.visibility == View.VISIBLE) {
-            collapsePalette()
-        }
+        collapsePalette()
     }
 
     /** Palette button: ring sized like the color dots; tinted like toolbar icons. */
@@ -409,9 +432,9 @@ class ToolbarFragment : Fragment() {
         }
     }
 
-    /** Expands the inline palette panel. */
+    /** Expands the inline palette panel (CLOSED <-> OPEN). */
     fun togglePalette() {
-        if (palettePanel.visibility == View.VISIBLE) {
+        if (paletteState != PaletteState.CLOSED) {
             collapsePalette()
             return
         }
@@ -423,20 +446,119 @@ class ToolbarFragment : Fragment() {
         paletteOriginalColor = currentInkColor
         // start from the remembered custom color (or the current ink color)
         startPaletteSession(if (paletteHasMemory) paletteRememberedColor else currentInkColor)
-        // float the panel right above the toolbar (same window, so taps
-        // on the color dots / tools below pass straight through)
-        val toolbar = requireActivity().findViewById<View>(R.id.toolbar_container)
-        val lp = palettePanel.layoutParams as FrameLayout.LayoutParams
-        lp.bottomMargin = toolbar.height + (8f * resources.displayMetrics.density).toInt()
-        palettePanel.layoutParams = lp
-        palettePanel.visibility = View.VISIBLE
+        setPaletteState(PaletteState.OPEN)
     }
 
-    /** Collapses the palette panel; returns true if it was open. */
+    /** Collapses the palette panel; returns true if it was showing. */
     fun collapsePalette(): Boolean {
-        val open = palettePanel.visibility == View.VISIBLE
-        if (open) palettePanel.visibility = View.GONE
-        return open
+        val wasShowing = paletteState != PaletteState.CLOSED
+        if (wasShowing) setPaletteState(PaletteState.CLOSED)
+        return wasShowing
+    }
+
+    /**
+     * Slides the panel down to [PaletteState.PEEK], leaving its top third
+     * visible above the toolbar so the image being edited is not covered.
+     *
+     * Deliberately wired to nothing yet - the trigger is a separate decision.
+     * A future trigger only has to call this (or [setPaletteState]); the state
+     * and its animation already exist.
+     */
+    fun peekPalette() {
+        if (paletteState == PaletteState.CLOSED) return
+        setPaletteState(PaletteState.PEEK)
+    }
+
+    /**
+     * Moves the panel to [target] with a non-linear transition: OPEN springs
+     * up with a slight overshoot before settling, PEEK eases back down, and
+     * CLOSED accelerates away and is then removed from the layout.
+     *
+     * [PaletteState.PEEK] has no caller yet by design.
+     */
+    fun setPaletteState(target: PaletteState) {
+        if (target == paletteState) return
+        val previous = paletteState
+        paletteState = target
+        val panel = palettePanel
+
+        if (target == PaletteState.CLOSED) {
+            val height = panel.height
+            if (height <= 0) {
+                // Never laid out (or already gone): nothing to animate.
+                panel.visibility = View.GONE
+                return
+            }
+            panel.animate().cancel()
+            panel.animate()
+                .translationY(height.toFloat())
+                .setDuration(paletteCloseDurationMs)
+                .setInterpolator(AccelerateInterpolator())
+                .withEndAction {
+                    // A reopen that landed mid-close wins: only hide if we
+                    // are still supposed to be closed.
+                    if (paletteState == PaletteState.CLOSED) {
+                        panel.visibility = View.GONE
+                    }
+                }
+                .start()
+            return
+        }
+
+        layoutPaletteViewport()
+        if (previous == PaletteState.CLOSED) {
+            // GONE views have no height. Show it first, then move it below the
+            // clip line during the pre-draw pass: setting the translation
+            // there means it is never drawn at its resting spot, so there is
+            // no one-frame flash before the slide-up starts.
+            panel.visibility = View.VISIBLE
+            panel.translationY = 0f
+            panel.doOnPreDraw {
+                panel.translationY = panel.height.toFloat()
+                slidePaletteTo(target)
+            }
+        } else {
+            slidePaletteTo(target)
+        }
+    }
+
+    /** Animates the panel from wherever it is to [target]'s resting offset. */
+    private fun slidePaletteTo(target: PaletteState) {
+        val panel = palettePanel
+        val height = panel.height.toFloat()
+        val endY = when (target) {
+            PaletteState.OPEN -> 0f
+            PaletteState.PEEK -> height * palettePeekSlide
+            PaletteState.CLOSED -> height
+        }
+        val opening = target == PaletteState.OPEN
+        panel.animate().cancel()
+        panel.animate()
+            .translationY(endY)
+            .setDuration(if (opening) paletteOpenDurationMs else palettePeekDurationMs)
+            .setInterpolator(
+                if (opening) OvershootInterpolator(1.1f) else DecelerateInterpolator()
+            )
+            .start()
+    }
+
+    /**
+     * Sizes the clipping viewport so its bottom edge sits just above the
+     * toolbar; the panel is laid out against that edge. Sliding the panel
+     * down therefore clips it at the toolbar instead of layering it over the
+     * tools - and because the clip lives on the panel's parent, the hidden
+     * part cannot swallow taps meant for the toolbar either.
+     */
+    private fun layoutPaletteViewport() {
+        val toolbar = requireActivity().findViewById<View>(R.id.toolbar_container)
+        val frame = paletteViewport.parent as? View ?: return
+        val gap = (8f * resources.displayMetrics.density).toInt()
+        val height = (frame.height - toolbar.height - gap).coerceAtLeast(0)
+        val lp = paletteViewport.layoutParams as FrameLayout.LayoutParams
+        if (lp.height != height) {
+            lp.height = height
+            paletteViewport.layoutParams = lp
+        }
     }
 
     /**
@@ -541,7 +663,7 @@ class ToolbarFragment : Fragment() {
 
     /** Applies a color picked from the image into the open panel. */
     fun setPickedColor(color: Int) {
-        if (palettePanel.visibility != View.VISIBLE) return
+        if (paletteState == PaletteState.CLOSED) return
         startPaletteSession(color)
     }
 }

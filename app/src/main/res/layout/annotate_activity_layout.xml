@@ -73,17 +73,31 @@
 
             <!-- Inline palette picker: floats ABOVE the toolbar (same window,
                  so taps on the toolbar/color dots/canvas pass straight
-                 through); positioned in code right above the toolbar. -->
-            <LinearLayout
-                android:id="@+id/palette_panel"
-                android:layout_width="wrap_content"
+                 through). The panel is laid out bottom-aligned inside
+                 palette_viewport, whose height is set in code to end just
+                 above the toolbar. Clipping on the viewport - the panel's
+                 parent - rather than on the panel means the slid-down part
+                 is hidden AND not touchable, so a peeking panel can never
+                 cover the toolbar or swallow taps meant for it. -->
+            <FrameLayout
+                android:id="@+id/palette_viewport"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="bottom|center_horizontal"
-                android:orientation="vertical"
-                android:visibility="gone">
+                android:layout_gravity="top|center_horizontal"
+                android:clipChildren="true"
+                android:clipToPadding="true">
 
-                <include layout="@layout/palette_popup" />
-            </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/palette_panel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <include layout="@layout/palette_popup" />
+                </LinearLayout>
+            </FrameLayout>
 
             <!-- Drag-to-delete drop target: edge-to-edge sheet with rounded
                  top corners covering the screen bottom, shown while dragging
