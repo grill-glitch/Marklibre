@@ -179,8 +179,9 @@ class AnnotateActivity : AppCompatActivity() {
                 // Switching to any tool other than CROP while a crop is
                 // open commits the crop first - the user implicitly said
                 // the visible crop is what they want, then asked to draw
-                // with the new tool.
-                if (tool != InkTool.CROP) commitCropIfActive()
+                // with the new tool. Passing null leaves the toolbar switch
+                // to the setActiveTool call below.
+                if (tool != InkTool.CROP) commitCropIfActive(switchToolbarTo = null)
                 if (tool == InkTool.CROP) {
                     // CROP is treated like every other tool: the toolbar
                     // stays visible, the button gets highlighted, and
@@ -430,16 +431,19 @@ class AnnotateActivity : AppCompatActivity() {
     }
 
     /**
-     * If a crop is currently in progress, commit it and exit the crop
-     * overlay without changing the toolbar highlight. Used by every
-     * "user did something other than cropping" path - the caller has
-     * already (or will shortly) call setActiveTool with the new tool,
-     * so this helper just cleans up the overlay / canvas state.
+     * If a crop is currently in progress, commit it and leave crop mode.
+     *
+     * [switchToolbarTo] is passed straight to [exitCropMode]; it defaults to
+     * PEN, which is right for every caller that does not set the tool itself
+     * (rotate, color, width, save). Without that the toolbar highlight - and
+     * the persisted last tool - stayed on CROP while the canvas had already
+     * gone back to PEN. onToolSelected passes null because it calls
+     * setActiveTool with the new tool immediately afterwards.
      */
-    private fun commitCropIfActive() {
+    private fun commitCropIfActive(switchToolbarTo: InkTool? = InkTool.PEN) {
         if (cropOverlay.visibility != View.VISIBLE) return
         canvas.applyCrop(cropOverlay.rect)
-        exitCropMode(switchToolbarTo = null)
+        exitCropMode(switchToolbarTo)
     }
 
     /**
