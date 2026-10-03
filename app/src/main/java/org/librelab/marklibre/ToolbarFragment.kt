@@ -71,16 +71,28 @@ class ToolbarFragment : Fragment() {
     private var paletteInited = false
 
     /**
-     * The three positions the palette panel can rest in. [PEEK] slides it
-     * down so only its top third stays visible above the toolbar - enough to
-     * stay reachable without covering the image being edited.
+     * At PEEK the panel slides down so that only the Original + Current
+     * swatch row is visible above the bottom toolbar. The row sits just
+     * above the toolbar buttons (crop / pen / text / highlighter / eraser /
+     * palette), and everything below it is hidden behind / clipped by the
+     * toolbar. The canvas is left unobstructed so the eyedropper can sample
+     * any pixel of the image, while the user can still see the original
+     * color (the color the picker opened with) and the current color (the
+     * color the eyedropper is sampling live) at a glance.
      */
     enum class PaletteState { CLOSED, OPEN, PEEK }
 
     private var paletteState = PaletteState.CLOSED
 
-    /** Fraction of its own height the panel slides down when peeking. */
-    private val palettePeekSlide = 2f / 3f
+    /**
+     * How many pixels of the panel stay visible above the toolbar at PEEK.
+     * Sized to fit the Original + Current row: the row has small swatches
+     * (32dp), an "Original / Current" label (labelSmall ≈ 14sp), a 14dp
+     * vertical padding around the picker column, and a 4dp spacer after the
+     * label. ~88dp at 3x density rounds to 264px - close enough for a fixed
+     * value that is independent of the spacing tweaks the picker might get.
+     */
+    private val palettePeekVisiblePx = 88
 
     // Non-linear transitions, tuned per direction: opening springs with a
     // slight overshoot and is the slowest; peeking settles; closing is a
@@ -538,7 +550,7 @@ class ToolbarFragment : Fragment() {
         val height = panel.height.toFloat()
         val endY = when (target) {
             PaletteState.OPEN -> 0f
-            PaletteState.PEEK -> height * palettePeekSlide
+            PaletteState.PEEK -> height - palettePeekVisiblePx
             PaletteState.CLOSED -> height
         }
         val opening = target == PaletteState.OPEN
