@@ -84,6 +84,15 @@ fun CustomColorPicker(
     onPickColorFromImage: () -> Unit,
     onApply: (Int) -> Unit,
     onCancel: () -> Unit,
+    /**
+     * Live color sampled by the eyedropper (set while the user holds the
+     * finger on the image). When non-null and different from the picker
+     * state, the Current swatch, hex field and active track/thumb mirror
+     * this color instead of the internal HSV state. The hue ring / sat-val
+     * square / alpha slider are NOT touched - the picker is a readout of
+     * the sample, not a target, while the eyedropper is armed.
+     */
+    livePreviewColor: Int? = null,
     modifier: Modifier = Modifier,
 ) {
     // Re-key on initialColor: when the caller resets the picker (Cancel
@@ -98,6 +107,13 @@ fun CustomColorPicker(
     var alpha by remember(initialColor) { mutableStateOf(initial.alpha) }
 
     val argbNow = hsvPlusAlphaToArgb(hue, sat, value, alpha)
+
+    // While the eyedropper is armed, the Current swatch / hex / track / thumb
+    // mirror the live sample instead of the picker's own HSV state. We key
+    // the override on the color itself (not a "isLive" bool) so a real
+    // -null- transition does not re-key the picker at all - slider state is
+    // preserved across the eyedropper gesture.
+    val argbDisplay = livePreviewColor?.takeIf { it != argbNow } ?: argbNow
 
     val ringInteraction = remember { MutableInteractionSource() }
     val squareInteraction = remember { MutableInteractionSource() }
@@ -119,11 +135,11 @@ fun CustomColorPicker(
             )
             SwatchColumn(
                 label = stringResource(R.string.palette_current),
-                color = argbNow,
+                color = argbDisplay,
             )
             Spacer(modifier = Modifier.width(2.dp))
             HexField(
-                argb = argbNow,
+                argb = argbDisplay,
                 onHexChange = { rgb ->
                     val parsed = parseHexRgb(rgb) ?: return@HexField
                     val hsv = argbToHsvPlusAlpha(parsed)
@@ -200,8 +216,8 @@ fun CustomColorPicker(
                 // The thumb stays fully opaque: it is the handle you grab,
                 // not a preview of the colour's alpha. Only the track under
                 // it is allowed to go see-through.
-                thumbColor = Color(argbNow or 0xFF000000.toInt()),
-                activeTrackColor = Color(argbNow),
+                thumbColor = Color(argbDisplay or 0xFF000000.toInt()),
+                activeTrackColor = Color(argbDisplay),
                 // Transparent, otherwise the opaque inactive track would
                 // paint over the checkerboard drawn beneath it. At full
                 // alpha the active track still covers the whole width, so

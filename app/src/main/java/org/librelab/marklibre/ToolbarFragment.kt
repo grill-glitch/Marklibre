@@ -25,6 +25,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -94,6 +95,15 @@ class ToolbarFragment : Fragment() {
     /** Bumped every time we re-emit Compose content (open / reopen / setPickedColor /
      *  Cancel-then-reopen) so the Compose layer can re-key its remember{} state. */
     private var paletteSessionKey = 0
+
+    /**
+     * Live color published while the eyedropper is sampling. null when the
+     * eyedropper is not armed. Updates only trigger the picker's Current /
+     * hex / track display - the underlying HSV state and slider position are
+     * not touched, so the picker can keep showing whatever the user set up
+     * before arming the eyedropper.
+     */
+    private val paletteLivePreviewColor = mutableStateOf<Int?>(null)
 
     /** Remembered custom palette color (persisted across launches). */
     private val palettePrefs by lazy {
@@ -586,6 +596,7 @@ class ToolbarFragment : Fragment() {
                 CustomColorPicker(
                     initialColor = initialColor,
                     originalColor = paletteOriginalColor,
+                    livePreviewColor = paletteLivePreviewColor.value,
                     onPickColorFromImage = {
                         callbacks?.onPickColorRequested()
                     },
@@ -665,5 +676,25 @@ class ToolbarFragment : Fragment() {
     fun setPickedColor(color: Int) {
         if (paletteState == PaletteState.CLOSED) return
         startPaletteSession(color)
+    }
+
+    /**
+     * Live preview update from the eyedropper. Does NOT re-emit the picker:
+     * it just publishes the sampled color, so only the Current swatch /
+     * hex / track follow the finger. Slider and HSV state stay where they
+     * were when the eyedropper was armed.
+     */
+    fun setLivePreviewColor(color: Int) {
+        if (paletteState == PaletteState.CLOSED) return
+        paletteLivePreviewColor.value = color
+    }
+
+    /**
+     * Eyedropper gesture ended: drop the live preview. The picker returns
+     * to whatever its underlying HSV state had been; the sampled color is
+     * not committed unless the user later taps Apply.
+     */
+    fun clearLivePreview() {
+        paletteLivePreviewColor.value = null
     }
 }

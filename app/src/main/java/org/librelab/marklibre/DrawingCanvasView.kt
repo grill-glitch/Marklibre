@@ -44,6 +44,8 @@ class DrawingCanvasView @JvmOverloads constructor(
         fun onTextDropTargetContains(x: Float, y: Float): Boolean
         /** Eyedropper result: a color picked from the image. */
         fun onColorPicked(color: Int)
+        /** Eyedropper: the finger was lifted, so the live-sample gesture is over. */
+        fun onColorPickFinished()
     }
 
     var listener: Listener? = null
@@ -124,6 +126,9 @@ class DrawingCanvasView @JvmOverloads constructor(
 
     /** When true, the next touch picks a source pixel instead of drawing. */
     var pickColorMode = false
+
+    /** True while an eyedropper gesture is in progress (finger still down). */
+    private var pickingColor = false
     private var gestureSpanPrev = 0f
     private var gestureFocusPrev = PointF()
 
@@ -586,9 +591,25 @@ class DrawingCanvasView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (tool == InkTool.CROP) return false
         if (pickColorMode) {
-            if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                pickColorMode = false
-                listener?.onColorPicked(pickColorAt(event.x, event.y))
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    // First sample + flag the gesture as in-progress. We do NOT
+                    // clear pickColorMode yet: a single tap is still legal, and
+                    // the move / up handlers are gated on pickingColor.
+                    pickingColor = true
+                    pickColorAt(event.x, event.y)?.let { listener?.onColorPicked(it) }
+                }
+                MotionEvent.ACTION_MOVE -> if (pickingColor) {
+                    pickColorAt(event.x, event.y)?.let { listener?.onColorPicked(it) }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    // Lift ends the gesture. The picker clears its own live
+                    // preview when it hears onColorPickFinished; pickColorMode
+                    // turns off here so a stray touch does not draw.
+                    pickingColor = false
+                    pickColorMode = false
+                    listener?.onColorPickFinished()
+                }
             }
             return true
         }
@@ -596,11 +617,13 @@ class DrawingCanvasView @JvmOverloads constructor(
     }
 
     /**
-     * Reads the source pixel under a screen point (accounting for the
-     * current fit/gesture matrix). Used by the eyedropper.
+     * Eyedropper sample: the source pixel under a screen point (accounting
+     * for the current fit/gesture matrix), or null when the point falls
+     * outside the image. A drag treats null as "hold the last sample" rather
+     * than blanking the colour out over the letterbox.
      */
-    fun pickColorAt(x: Float, y: Float): Int {
-        val src = source ?: return Color.TRANSPARENT
+    fun pickColorAt(x: Float, y: Float): Int? {
+        val src = source ?: return null
         val pts = floatArrayOf(x, y)
         inverse.mapPoints(pts)
         val sx = pts[0].toInt()
@@ -608,7 +631,7 @@ class DrawingCanvasView @JvmOverloads constructor(
         return if (sx in 0 until src.width && sy in 0 until src.height) {
             src.getPixel(sx, sy)
         } else {
-            Color.TRANSPARENT
+            null
         }
     }
 

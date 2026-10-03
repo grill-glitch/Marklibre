@@ -209,6 +209,13 @@ class AnnotateActivity : AppCompatActivity() {
 
             override fun onPickColorRequested() {
                 canvas.pickColorMode = true
+                // Slide the panel down to PEEK so its top third stays above
+                // the toolbar (visible, non-interactive); the image being
+                // picked stays uncovered. We do not change the panel's rest
+                // graph or layer order - the canvas's onTouchEvent already
+                // receives the gesture because the panel only covers a thin
+                // band between the image bottom and the toolbar.
+                toolbarFragment.peekPalette()
             }
         }
         canvas.listener = object : DrawingCanvasView.Listener {
@@ -218,7 +225,16 @@ class AnnotateActivity : AppCompatActivity() {
             }
 
             override fun onColorPicked(color: Int) {
-                toolbarFragment.setPickedColor(color)
+                // Eyedropper sample: published to the picker as a live
+                // preview (Current swatch / hex / track follow the finger
+                // without re-keying the slider). onColorPickFinished below
+                // is what actually clears it on UP / CANCEL.
+                toolbarFragment.setLivePreviewColor(color)
+            }
+
+            override fun onColorPickFinished() {
+                toolbarFragment.clearLivePreview()
+                toolbarFragment.setPaletteState(ToolbarFragment.PaletteState.OPEN)
             }
 
             override fun onRequestNewText(x: Float, y: Float) {
