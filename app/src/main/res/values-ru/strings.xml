@@ -26,12 +26,11 @@
     <string name="palette">Палитра</string>
     <string name="palette_apply">Применить</string>
     <string name="palette_cancel">Отмена</string>
+    <string name="palette_color">Цвет</string>
     <string name="palette_colorize">Выбрать цвет из изображения</string>
     <string name="palette_original">Исходный</string>
     <string name="palette_current">Текущий</string>
     <string name="palette_hue">Тон</string>
-    <string name="palette_saturation">Насыщенность</string>
-    <string name="palette_value">Яркость</string>
     <string name="palette_opacity">Непрозрачность</string>
     <string name="palette_hex_hint">#RRGGBB</string>
     <string name="pen_width">Толщина пера</string>

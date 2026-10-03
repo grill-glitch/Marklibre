@@ -26,12 +26,11 @@
     <string name="palette">パレット</string>
     <string name="palette_apply">適用</string>
     <string name="palette_cancel">キャンセル</string>
+    <string name="palette_color">色彩</string>
     <string name="palette_colorize">画像から色を選択</string>
     <string name="palette_original">元の色</string>
     <string name="palette_current">現在</string>
     <string name="palette_hue">色相</string>
-    <string name="palette_saturation">彩度</string>
-    <string name="palette_value">明度</string>
     <string name="palette_opacity">不透明度</string>
     <string name="palette_hex_hint">#RRGGBB</string>
     <string name="pen_width">ペンの太さ</string>

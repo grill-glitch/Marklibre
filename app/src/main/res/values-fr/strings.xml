@@ -26,12 +26,11 @@
     <string name="palette">Palette</string>
     <string name="palette_apply">Appliquer</string>
     <string name="palette_cancel">Annuler</string>
+    <string name="palette_color">Couleur</string>
     <string name="palette_colorize">Choisir une couleur dans l\'image</string>
     <string name="palette_original">Original</string>
     <string name="palette_current">Actuel</string>
     <string name="palette_hue">Teinte</string>
-    <string name="palette_saturation">Saturation</string>
-    <string name="palette_value">Luminosité</string>
     <string name="palette_opacity">Opacité</string>
     <string name="palette_hex_hint">#RRGGBB</string>
     <string name="pen_width">Épaisseur du stylo</string>

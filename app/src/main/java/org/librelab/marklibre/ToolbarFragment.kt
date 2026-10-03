@@ -11,20 +11,24 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
-import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.SeekBar
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import kotlin.math.roundToInt
+import org.librelab.marklibre.widget.CustomColorPicker
 
 class ToolbarFragment : Fragment() {
 
@@ -47,38 +51,24 @@ class ToolbarFragment : Fragment() {
     private lateinit var penWidthSlider: SeekBar
     private lateinit var paletteButton: ImageView
 
-    // The inline panel and its controls live in the activity layout; all
-    // lazy because the fragment view is inflated DURING the activity layout
-    // inflation, when the panel (declared after toolbar_container) does not
-    // exist yet - resolve them on first expansion instead.
+    // The inline panel + Compose host live in the activity layout; resolve
+    // them lazily because the fragment view is inflated DURING the activity
+    // layout inflation, when the panel (declared after toolbar_container)
+    // does not exist yet - resolve them on first expansion instead.
     private val palettePanel: View by lazy {
         requireActivity().findViewById<View>(R.id.palette_panel)
     }
-    private val palettePreview: View by lazy {
-        requireActivity().findViewById<View>(R.id.palette_preview)
-    }
-    private val paletteHue: SeekBar by lazy {
-        requireActivity().findViewById<SeekBar>(R.id.palette_hue)
-    }
-    private val paletteSat: SeekBar by lazy {
-        requireActivity().findViewById<SeekBar>(R.id.palette_saturation)
-    }
-    private val paletteVal: SeekBar by lazy {
-        requireActivity().findViewById<SeekBar>(R.id.palette_value)
-    }
-    private val paletteAlpha: SeekBar by lazy {
-        requireActivity().findViewById<SeekBar>(R.id.palette_opacity)
-    }
-    private val paletteHex: EditText by lazy {
-        requireActivity().findViewById<EditText>(R.id.palette_hex)
-    }
-    private val paletteOriginalPreview: View by lazy {
-        requireActivity().findViewById<View>(R.id.palette_preview_original)
+    private val paletteComposeView: ComposeView by lazy {
+        requireActivity().findViewById<ComposeView>(R.id.palette_compose_view)
     }
     private var paletteInited = false
 
     /** Color the picker opened with (for the Original swatch + Cancel). */
     private var paletteOriginalColor = Color.BLACK
+
+    /** Bumped every time we re-emit Compose content (open / reopen / setPickedColor /
+     *  Cancel-then-reopen) so the Compose layer can re-key its remember{} state. */
+    private var paletteSessionKey = 0
 
     /** Remembered custom palette color (persisted across launches). */
     private val palettePrefs by lazy {
@@ -110,25 +100,6 @@ class ToolbarFragment : Fragment() {
 
     /** Current ink color, mirrored into the width preview bar. */
     private var currentInkColor: Int = Color.BLACK
-
-    // Inline palette picker state (HSV + alpha)
-    private var pHue = 0f
-    private var pSat = 1f
-    private var pVal = 1f
-    private var pAlpha = 255
-    private var pSyncing = false
-    private val paletteSatTrack = GradientDrawable(
-        GradientDrawable.Orientation.LEFT_RIGHT,
-        intArrayOf(0xFF888888.toInt(), 0xFFFF0000.toInt())
-    )
-    private val paletteValTrack = GradientDrawable(
-        GradientDrawable.Orientation.LEFT_RIGHT,
-        intArrayOf(0xFF000000.toInt(), 0xFFFF0000.toInt())
-    )
-    private val paletteAlphaTrack = GradientDrawable(
-        GradientDrawable.Orientation.LEFT_RIGHT,
-        intArrayOf(0x00000000, 0xFF000000.toInt())
-    )
 
     private var highlightView: View? = null
     private var dimBg: Drawable? = null
@@ -438,7 +409,7 @@ class ToolbarFragment : Fragment() {
         }
     }
 
-    /** Expands/collapses the inline palette panel. */
+    /** Expands the inline palette panel. */
     fun togglePalette() {
         if (palettePanel.visibility == View.VISIBLE) {
             collapsePalette()
@@ -451,7 +422,7 @@ class ToolbarFragment : Fragment() {
         // remember the color we opened with (Original swatch + Cancel)
         paletteOriginalColor = currentInkColor
         // start from the remembered custom color (or the current ink color)
-        initPaletteFrom(if (paletteHasMemory) paletteRememberedColor else currentInkColor)
+        startPaletteSession(if (paletteHasMemory) paletteRememberedColor else currentInkColor)
         // float the panel right above the toolbar (same window, so taps
         // on the color dots / tools below pass straight through)
         val toolbar = requireActivity().findViewById<View>(R.id.toolbar_container)
@@ -468,165 +439,109 @@ class ToolbarFragment : Fragment() {
         return open
     }
 
-    private fun paletteColor(): Int = Color.HSVToColor(pAlpha, floatArrayOf(pHue, pSat, pVal))
-
-    private fun refreshPalettePreview() {
-        palettePreview.setBackgroundColor(paletteColor())
-    }
-
-    private fun refreshPaletteOriginal() {
-        paletteOriginalPreview.setBackgroundColor(paletteOriginalColor)
-    }
-
-    private fun refreshPaletteHex() {
-        if (pSyncing) return
-        pSyncing = true
-        paletteHex.setText(
-            String.format(
-                "#%02X%02X%02X",
-                Color.red(paletteColor()),
-                Color.green(paletteColor()),
-                Color.blue(paletteColor())
-            )
-        )
-        pSyncing = false
-    }
-
-    private fun refreshPaletteSliders() {
-        if (pSyncing) return
-        pSyncing = true
-        paletteHue.progress = (pHue / 360f * 100f).roundToInt()
-        paletteSat.progress = (pSat * 100f).roundToInt()
-        paletteVal.progress = (pVal * 100f).roundToInt()
-        paletteAlpha.progress = (pAlpha / 255f * 100f).roundToInt()
-        pSyncing = false
-    }
-
-    private fun applyPaletteHex() {
-        val text = paletteHex.text.toString().trim().removePrefix("#")
-        if (text.length != 6) return
-        val rgb = text.toIntOrNull(16) ?: return
-        val hsv = FloatArray(3)
-        Color.colorToHSV(0xFF000000.toInt() or rgb, hsv)
-        pHue = hsv[0]
-        pSat = hsv[1]
-        pVal = hsv[2]
-        refreshPaletteSliders()
-        refreshPalettePreview()
-    }
-
-    private fun tintPaletteSliders() {
-        val rgb = Color.HSVToColor(floatArrayOf(pHue, 1f, 1f))
-        paletteSatTrack.colors = intArrayOf(Color.rgb(128, 128, 128), rgb)
-        paletteValTrack.colors = intArrayOf(Color.BLACK, rgb)
-        paletteSat.progressDrawable = paletteSatTrack
-        paletteVal.progressDrawable = paletteValTrack
-        paletteAlpha.progressDrawable = paletteAlphaTrack
-    }
-
-    /** Initializes the picker sliders/hex/preview from [color]. */
-    private fun initPaletteFrom(color: Int) {
-        val hsv = FloatArray(3)
-        Color.colorToHSV(color, hsv)
-        pHue = hsv[0]
-        pSat = hsv[1]
-        pVal = hsv[2]
-        pAlpha = Color.alpha(color)
-        refreshPaletteSliders()
-        refreshPaletteHex()
-        refreshPalettePreview()
-        refreshPaletteOriginal()
-        tintPaletteSliders()
-    }
-
-    /** Wires the inline palette picker (sliders, hex, apply). */
+    /**
+     * Wire the ComposeView host once. Subsequent opens reuse it; [startPaletteSession]
+     * re-keys the Compose state with a fresh color.
+     */
     private fun setupPalette() {
-        paletteHue.progressDrawable = GradientDrawable(
-            GradientDrawable.Orientation.LEFT_RIGHT,
-            intArrayOf(
-                0xFFFF0000.toInt(), 0xFFFFFF00.toInt(), 0xFF00FF00.toInt(),
-                0xFF00FFFF.toInt(), 0xFF0000FF.toInt(), 0xFFFF00FF.toInt(),
-                0xFFFF0000.toInt()
-            )
+        paletteComposeView.setViewCompositionStrategy(
+            ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
         )
+    }
 
-        val sliderListener = object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
-                if (pSyncing || !fromUser) return
-                when (sb) {
-                    paletteHue -> {
-                        pHue = progress / 100f * 360f
-                        // black/gray start colors have sat/val 0 - restore them
-                        // so dragging hue produces color, not more black
-                        if (pSat < 0.05f) {
-                            pSat = 1f
-                            paletteSat.progress = 100
-                        }
-                        if (pVal < 0.05f) {
-                            pVal = 1f
-                            paletteVal.progress = 100
-                        }
-                    }
-                    paletteSat -> pSat = progress / 100f
-                    paletteVal -> pVal = progress / 100f
-                    paletteAlpha -> pAlpha = (progress / 100f * 255f).roundToInt()
-                }
-                tintPaletteSliders()
-                refreshPaletteHex()
-                refreshPalettePreview()
+    /**
+     * (Re-)emit Compose content for a picker session. Bumping [paletteSessionKey]
+     * forces the Compose layer's `remember(key)` blocks to re-evaluate with the
+     * new initial color, mirroring what the old View-based `initPaletteFrom`
+     * did for the four SeekBars.
+     */
+    private fun startPaletteSession(initialColor: Int) {
+        paletteSessionKey++
+        paletteComposeView.setContent {
+            MaterialTheme(
+                colorScheme = appColorScheme(),
+            ) {
+                CustomColorPicker(
+                    initialColor = initialColor,
+                    originalColor = paletteOriginalColor,
+                    onPickColorFromImage = {
+                        callbacks?.onPickColorRequested()
+                    },
+                    onApply = { argb ->
+                        callbacks?.onColorSelected(argb)
+                        paletteRememberedColor = argb
+                        paletteHasMemory = true
+                        palettePrefs.edit().putInt("palette_color", argb).apply()
+                        updatePaletteButton()
+                        collapsePalette()
+                    },
+                    onCancel = {
+                        // restore: just close; the next open() will reset
+                        // because startPaletteSession re-keys Compose state.
+                        collapsePalette()
+                    },
+                )
             }
-
-            override fun onStartTrackingTouch(sb: SeekBar) {}
-            override fun onStopTrackingTouch(sb: SeekBar) {}
         }
-        paletteHue.setOnSeekBarChangeListener(sliderListener)
-        paletteSat.setOnSeekBarChangeListener(sliderListener)
-        paletteVal.setOnSeekBarChangeListener(sliderListener)
-        paletteAlpha.setOnSeekBarChangeListener(sliderListener)
+    }
 
-        paletteHex.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                if (pSyncing) return
-                val text = s.toString().trim().removePrefix("#")
-                if (text.length == 6 && text.toIntOrNull(16) != null) {
-                    applyPaletteHex()
-                    tintPaletteSliders()
-                    refreshPalettePreview()
-                }
-            }
-        })
+    private fun isSystemInDarkMode(): Boolean {
+        val night = androidx.appcompat.app.AppCompatDelegate.getDefaultNightMode()
+        if (night == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES) return true
+        if (night == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO) return false
+        val cfg = resources.configuration
+        return (cfg.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+    }
 
-        requireActivity().findViewById<View>(R.id.palette_apply).setOnClickListener {
-            val color = paletteColor()
-            callbacks?.onColorSelected(color)
-            // remember the custom color for next launch
-            paletteRememberedColor = color
-            paletteHasMemory = true
-            palettePrefs.edit().putInt("palette_color", color).apply()
-            updatePaletteButton()
-            collapsePalette()
-        }
-
-        // Cancel: restore the color the picker opened with and close
-        requireActivity().findViewById<View>(R.id.palette_cancel).setOnClickListener {
-            initPaletteFrom(paletteOriginalColor)
-            collapsePalette()
-        }
-
-        // Eyedropper: hand off to the activity, which puts the canvas into
-        // pick mode; the picked color comes back via setPickedColor()
-        requireActivity().findViewById<View>(R.id.palette_colorize).setOnClickListener {
-            callbacks?.onPickColorRequested()
-        }
-
-        initPaletteFrom(if (paletteHasMemory) paletteRememberedColor else currentInkColor)
+    /**
+     * The app's Material 3 colour scheme, resolved from the Activity theme.
+     *
+     * The app uses [Theme.Material3.DynamicColors.DayNight] so every attribute
+     * carries the wallpaper-derived (dynamic) palette. Resolving them into a
+     * Compose [ColorScheme] keeps the picker popup visually identical to the
+     * View UI instead of falling back to Material's baseline purple.
+     */
+    private fun appColorScheme(): ColorScheme {
+        val ctx = requireContext()
+        val base = if (isSystemInDarkMode()) darkColorScheme() else lightColorScheme()
+        fun attr(
+            androidAttr: Int,
+            fallback: androidx.compose.ui.graphics.Color,
+        ): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(
+            ctx.themeColor(androidAttr, fallback.toArgb()),
+        )
+        return base.copy(
+            primary = attr(
+                androidx.appcompat.R.attr.colorPrimary, base.primary,
+            ),
+            onPrimary = attr(
+                com.google.android.material.R.attr.colorOnPrimary, base.onPrimary,
+            ),
+            primaryContainer = attr(
+                com.google.android.material.R.attr.colorPrimaryContainer, base.primaryContainer,
+            ),
+            onPrimaryContainer = attr(
+                com.google.android.material.R.attr.colorOnPrimaryContainer, base.onPrimaryContainer,
+            ),
+            surface = attr(
+                com.google.android.material.R.attr.colorSurface, base.surface,
+            ),
+            onSurface = attr(
+                com.google.android.material.R.attr.colorOnSurface, base.onSurface,
+            ),
+            onSurfaceVariant = attr(
+                com.google.android.material.R.attr.colorOnSurfaceVariant, base.onSurfaceVariant,
+            ),
+            outline = attr(
+                com.google.android.material.R.attr.colorOutline, base.outline,
+            ),
+        )
     }
 
     /** Applies a color picked from the image into the open panel. */
     fun setPickedColor(color: Int) {
         if (palettePanel.visibility != View.VISIBLE) return
-        initPaletteFrom(color)
+        startPaletteSession(color)
     }
 }

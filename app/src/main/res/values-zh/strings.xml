@@ -26,12 +26,11 @@
     <string name="palette">调色板</string>
     <string name="palette_apply">应用</string>
     <string name="palette_cancel">取消</string>
+    <string name="palette_color">颜色</string>
     <string name="palette_colorize">从图片取色</string>
     <string name="palette_original">原色</string>
     <string name="palette_current">当前</string>
     <string name="palette_hue">色相</string>
-    <string name="palette_saturation">饱和度</string>
-    <string name="palette_value">亮度</string>
     <string name="palette_opacity">不透明度</string>
     <string name="palette_hex_hint">#RRGGBB</string>
     <string name="pen_width">笔宽</string>
