@@ -71,28 +71,27 @@ class ToolbarFragment : Fragment() {
     private var paletteInited = false
 
     /**
-     * At PEEK the panel slides down so that only the Original + Current
-     * swatch row is visible above the bottom toolbar. The row sits just
-     * above the toolbar buttons (crop / pen / text / highlighter / eraser /
-     * palette), and everything below it is hidden behind / clipped by the
-     * toolbar. The canvas is left unobstructed so the eyedropper can sample
-     * any pixel of the image, while the user can still see the original
-     * color (the color the picker opened with) and the current color (the
-     * color the eyedropper is sampling live) at a glance.
+     * At PEEK the panel slides down so the Original + Current swatches /
+     * label / hex field land just above the canvas, with only a small gap
+     * (a few dp) between the top of the visible strip and the canvas
+     * bottom. The strip is allowed to overlap the bottom toolbar (crop /
+     * pen / text / highlighter / eraser / palette) so the rest of the
+     * picker can stay reachable - those tools are inert while the
+     * eyedropper is armed anyway.
      */
     enum class PaletteState { CLOSED, OPEN, PEEK }
 
     private var paletteState = PaletteState.CLOSED
 
     /**
-     * How many pixels of the panel stay visible above the toolbar at PEEK.
-     * Sized to fit the Original + Current row: the row has small swatches
-     * (32dp), an "Original / Current" label (labelSmall ≈ 14sp), a 14dp
-     * vertical padding around the picker column, and a 4dp spacer after the
-     * label. ~88dp at 3x density rounds to 264px - close enough for a fixed
-     * value that is independent of the spacing tweaks the picker might get.
+     * How many pixels of the panel stay visible above the viewport's clip
+     * line at PEEK. Sized so the top of the visible strip sits a few dp
+     * above the canvas bottom - the user can still see the Original +
+     * Current row, with the canvas mostly unobstructed (only the last
+     * strip of pixels below the slider bar is overlapped by the hex
+     * field). 144px at 3x density = 48dp.
      */
-    private val palettePeekVisiblePx = 88
+    private val palettePeekVisiblePx = 350
 
     // Non-linear transitions, tuned per direction: opening springs with a
     // slight overshoot and is the slowest; peeking settles; closing is a
@@ -527,7 +526,7 @@ class ToolbarFragment : Fragment() {
             return
         }
 
-        layoutPaletteViewport()
+        layoutPaletteViewport(target)
         if (previous == PaletteState.CLOSED) {
             // GONE views have no height. Show it first, then move it below the
             // clip line during the pre-draw pass: setting the translation
@@ -565,17 +564,26 @@ class ToolbarFragment : Fragment() {
     }
 
     /**
-     * Sizes the clipping viewport so its bottom edge sits just above the
-     * toolbar; the panel is laid out against that edge. Sliding the panel
-     * down therefore clips it at the toolbar instead of layering it over the
-     * tools - and because the clip lives on the panel's parent, the hidden
-     * part cannot swallow taps meant for the toolbar either.
+     * Sizes the clipping viewport to fit the state we are entering.
+     *
+     * - OPEN: viewport ends just above the toolbar; the panel sits with its
+     *   bottom edge there. This is the pre-three-state behaviour.
+     * - PEEK: viewport extends down to fill the inner frame, so the panel
+     *   can be translated downward and land its visible strip inside the
+     *   bottom toolbar's region (over the crop / pen / text / highlighter /
+     *   eraser / palette buttons) instead of over the canvas.
+     * - CLOSED: irrelevant - the panel is hidden and the viewport can keep
+     *   whatever size it had.
      */
-    private fun layoutPaletteViewport() {
+    private fun layoutPaletteViewport(target: PaletteState) {
         val toolbar = requireActivity().findViewById<View>(R.id.toolbar_container)
         val frame = paletteViewport.parent as? View ?: return
         val gap = (8f * resources.displayMetrics.density).toInt()
-        val height = (frame.height - toolbar.height - gap).coerceAtLeast(0)
+        val height = when (target) {
+            PaletteState.PEEK -> frame.height
+            PaletteState.OPEN -> (frame.height - toolbar.height - gap).coerceAtLeast(0)
+            PaletteState.CLOSED -> frame.height
+        }
         val lp = paletteViewport.layoutParams as FrameLayout.LayoutParams
         if (lp.height != height) {
             lp.height = height
