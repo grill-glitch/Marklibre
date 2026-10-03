@@ -704,17 +704,36 @@ class ToolbarFragment : Fragment() {
      * hex / track follow the finger. Slider and HSV state stay where they
      * were when the eyedropper was armed.
      */
+    /**
+     * Tracks the most recent color sampled by the eyedropper. Used at
+     * gesture-end to commit the sample as the picker's new starting color
+     * - so the panel returns to OPEN showing the sampled color rather
+     * than flashing back to the color the picker opened with.
+     */
+    private var paletteLastPickedColor: Int = Color.BLACK
+
     fun setLivePreviewColor(color: Int) {
         if (paletteState == PaletteState.CLOSED) return
         paletteLivePreviewColor.value = color
+        paletteLastPickedColor = color
     }
 
     /**
-     * Eyedropper gesture ended: drop the live preview. The picker returns
-     * to whatever its underlying HSV state had been; the sampled color is
-     * not committed unless the user later taps Apply.
+     * Eyedropper gesture ended: take the last-sampled color, re-emit the
+     * picker with it as the starting color (so the panel returns to OPEN
+     * showing what was actually picked), and return the panel to its full
+     * open position. The sample is still NOT persisted to the ink color
+     * unless the user later taps Apply - this just stops the panel from
+     * snapping back to the color it was opened with.
      */
-    fun clearLivePreview() {
+    fun commitLivePreview() {
         paletteLivePreviewColor.value = null
+        if (paletteState == PaletteState.CLOSED) return
+        // Re-emit the picker with the last sample as its starting color.
+        // setContent replaces the composition and triggers a fresh
+        // remember(initialColor) pass on the HSV state, so the Current
+        // swatch / hex / sliders all land on the sampled value rather
+        // than the pre-eyedropper state.
+        startPaletteSession(paletteLastPickedColor)
     }
 }

@@ -233,7 +233,13 @@ class AnnotateActivity : AppCompatActivity() {
             }
 
             override fun onColorPickFinished() {
-                toolbarFragment.clearLivePreview()
+                // Eyedropper released. The live preview is dropped, the
+                // picker is re-emitted with the last sample as its
+                // starting color (so Current / hex / sliders land on the
+                // sampled value rather than flashing back), and the panel
+                // returns to its fully open position. Apply is still
+                // required to commit the color to the ink.
+                toolbarFragment.commitLivePreview()
                 toolbarFragment.setPaletteState(ToolbarFragment.PaletteState.OPEN)
             }
 
