@@ -34,6 +34,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
@@ -45,11 +48,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.zt64.compose.pipette.HsvColor
 import dev.zt64.compose.pipette.RingColorPicker
 import dev.zt64.compose.pipette.SquareColorPicker
+import kotlin.math.ceil
 import org.librelab.marklibre.R
 
 /**
@@ -246,6 +251,45 @@ fun CustomColorPicker(
     }
 }
 
+/** Checkerboard cell size used by the transparency backgrounds. */
+private val CHECKER_CELL = 4.dp
+
+private val CHECKER_LIGHT = Color(0xFFFFFFFF)
+private val CHECKER_DARK = Color(0xFFCCCCCC)
+
+/**
+ * Draws a transparency checkerboard behind whatever is painted on top of it.
+ *
+ * Used under the Original/Current swatches and the opacity slider so a
+ * partly transparent colour reads as *transparent* rather than as a dull
+ * smudge against the popup background.
+ *
+ * Draws the light colour as one full-size rect and only the dark cells on
+ * top, so a full-width track costs half the draw calls of a naive loop.
+ */
+private fun Modifier.checkerboard(
+    cell: Dp = CHECKER_CELL,
+    light: Color = CHECKER_LIGHT,
+    dark: Color = CHECKER_DARK,
+): Modifier = drawBehind {
+    val cellPx = cell.toPx()
+    if (cellPx <= 0f) return@drawBehind
+    drawRect(color = light)
+    val columns = ceil(size.width / cellPx).toInt()
+    val rows = ceil(size.height / cellPx).toInt()
+    for (row in 0 until rows) {
+        for (column in 0 until columns) {
+            if ((row + column) % 2 != 0) {
+                drawRect(
+                    color = dark,
+                    topLeft = Offset(column * cellPx, row * cellPx),
+                    size = Size(cellPx, cellPx),
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun SwatchColumn(label: String, color: Int) {
     Column {
@@ -259,6 +303,7 @@ private fun SwatchColumn(label: String, color: Int) {
                 .padding(top = 2.dp)
                 .size(width = 52.dp, height = 28.dp)
                 .clip(RoundedCornerShape(4.dp))
+                .checkerboard()
                 .background(Color(color))
                 .border(
                     width = 1.dp,
