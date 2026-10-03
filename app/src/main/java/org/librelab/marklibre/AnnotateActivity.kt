@@ -91,6 +91,14 @@ class AnnotateActivity : AppCompatActivity() {
         getSharedPreferences("marklibre", Context.MODE_PRIVATE)
     }
 
+    override fun onStop() {
+        super.onStop()
+        // Final write in case the last change happened between two
+        // onProgressChanged events that didn't trigger a persist (e.g.
+        // very rapid slider gestures), or the process is being killed.
+        toolbarFragment.persistToolState()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.annotate_activity_layout)
@@ -168,7 +176,17 @@ class AnnotateActivity : AppCompatActivity() {
         toolbarContainer = findViewById(R.id.toolbar_container)
         toolbarFragment.callbacks = object : ToolbarFragment.Callbacks {
             override fun onToolSelected(tool: InkTool) {
+                // Switching to any tool other than CROP while a crop is
+                // open commits the crop first - the user implicitly said
+                // the visible crop is what they want, then asked to draw
+                // with the new tool.
+                if (tool != InkTool.CROP) commitCropIfActive()
                 if (tool == InkTool.CROP) {
+                    // CROP is treated like every other tool: the toolbar
+                    // stays visible, the button gets highlighted, and
+                    // switching away commits the pending crop.
+                    canvas.tool = tool
+                    toolbarFragment.setActiveTool(tool)
                     enterCropMode()
                     return
                 }
@@ -190,16 +208,21 @@ class AnnotateActivity : AppCompatActivity() {
                 }
             }
 
-            override fun onColorSelected(color: Int) {
+            override fun onColorSelected(color: Int, source: ToolbarFragment.ColorSource) {
+                // Picking a color mid-crop commits the crop first.
+                commitCropIfActive()
                 canvas.color = color
-                toolbarFragment.setSelectedColor(color)
+                toolbarFragment.setSelectedColor(color, source)
+                // setSelectedColor already persists; no extra write needed.
             }
 
             override fun onRotate() {
+                commitCropIfActive()
                 canvas.rotateImage()
             }
 
             override fun onWidthSelected(widthDp: Float) {
+                commitCropIfActive()
                 if (canvas.tool == InkTool.HIGHLIGHTER) {
                     canvas.highlighterWidthDp = widthDp
                 } else {
@@ -269,10 +292,30 @@ class AnnotateActivity : AppCompatActivity() {
             override fun onTextDropTargetContains(x: Float, y: Float): Boolean =
                 trashBounds().contains(x, y)
         }
-        toolbarFragment.setActiveTool(InkTool.PEN)
-        toolbarFragment.setSelectedColor(canvas.color)
-        toolbarFragment.setSelectedPenWidth(canvas.penWidthDp)
-        toolbarFragment.setSelectedHighlighterWidth(canvas.highlighterWidthDp)
+        // Restore last-used tool state from prefs (tool / color with the right
+        // button highlighted / pen width / highlighter width). canvas.* is
+        // the source of truth for the actual ink; sync those back too so a
+        // stroke drawn before any UI interaction matches what the user saw
+        // on the toolbar.
+        val restored = toolbarFragment.restoreStateOrNull()
+        if (restored != null) {
+            canvas.tool = restored.tool
+            canvas.color = restored.colorArgb
+            canvas.penWidthDp = restored.penWidth
+            canvas.highlighterWidthDp = restored.highlighterWidth
+            // Mirror the color-row visibility a manual tool switch would
+            // have produced, so a restored ERASER/TEXT does not come back
+            // with the ink swatches showing. (CROP re-hides it itself, via
+            // enterCropMode once the bitmap is in.)
+            toolbarFragment.setColorPanelVisible(
+                restored.tool == InkTool.PEN || restored.tool == InkTool.HIGHLIGHTER
+            )
+        } else {
+            toolbarFragment.setActiveTool(InkTool.PEN)
+            toolbarFragment.setSelectedColor(canvas.color)
+            toolbarFragment.setSelectedPenWidth(canvas.penWidthDp)
+            toolbarFragment.setSelectedHighlighterWidth(canvas.highlighterWidthDp)
+        }
     }
 
     private fun setupTextEditor() {
@@ -332,11 +375,10 @@ class AnnotateActivity : AppCompatActivity() {
     }
 
     private fun setupCrop() {
+        // crop_cancel drops the pending crop without applying it. The
+        // explicit confirm button is gone - commit-on-switch + commit-on-
+        // save are the two ways to actually apply a crop.
         findViewById<View>(R.id.crop_cancel).setOnClickListener { exitCropMode() }
-        findViewById<View>(R.id.crop_confirm).setOnClickListener {
-            canvas.applyCrop(cropOverlay.rect)
-            exitCropMode()
-        }
     }
 
     private fun enterCropMode() {
@@ -347,20 +389,57 @@ class AnnotateActivity : AppCompatActivity() {
         cropOverlay.setInitialRect(r)
         cropOverlay.visibility = View.VISIBLE
         cropActions.visibility = View.VISIBLE
-        toolbarContainer?.visibility = View.GONE
+        // Toolbar stays visible - crop is a regular tool now, not a mode
+        // that hides the rest of the UI.
+        toolbarContainer?.visibility = View.VISIBLE
+        // The ink color is irrelevant while cropping, so the swatch row
+        // would just be noise. Hide it (and the pen-width row, which is
+        // already hidden for non-brush tools). Also drop any open
+        // picker popup - none of its controls are meaningful in crop
+        // mode either.
+        toolbarFragment.collapsePalette()
+        toolbarFragment.setColorPanelVisible(false)
         undoButton.isEnabled = false
         redoButton.isEnabled = false
     }
 
-    private fun exitCropMode() {
+    private fun exitCropMode(switchToolbarTo: InkTool? = InkTool.PEN) {
         cropOverlay.visibility = View.GONE
         cropActions.visibility = View.GONE
         toolbarContainer?.visibility = View.VISIBLE
+        // Drop out of crop mode: the canvas needs to be in a drawable
+        // state again. The toolbar button highlight is switched to
+        // [switchToolbarTo] (defaults to PEN) only when the caller has
+        // not already done so - the commit-on-switch paths pass null so
+        // the caller's setActiveTool call is the single source of truth.
         canvas.tool = InkTool.PEN
-        toolbarFragment.setActiveTool(InkTool.PEN)
+        switchToolbarTo?.let { toolbarFragment.setActiveTool(it) }
+        // Restore the ink color row: brush tools show it, non-brush
+        // tools hide it. The current canvas tool is PEN at this point
+        // (set just above) - if [switchToolbarTo] is non-null it
+        // matches, otherwise the caller's setActiveTool already
+        // re-evaluated color panel visibility.
+        if (switchToolbarTo != null) {
+            toolbarFragment.setColorPanelVisible(
+                switchToolbarTo == InkTool.PEN || switchToolbarTo == InkTool.HIGHLIGHTER
+            )
+        }
         // re-push the real undo/redo availability (a cancelled crop changes
         // nothing; a confirmed one already pushed a ReplaceImage op)
         canvas.refreshUndoState()
+    }
+
+    /**
+     * If a crop is currently in progress, commit it and exit the crop
+     * overlay without changing the toolbar highlight. Used by every
+     * "user did something other than cropping" path - the caller has
+     * already (or will shortly) call setActiveTool with the new tool,
+     * so this helper just cleans up the overlay / canvas state.
+     */
+    private fun commitCropIfActive() {
+        if (cropOverlay.visibility != View.VISIBLE) return
+        canvas.applyCrop(cropOverlay.rect)
+        exitCropMode(switchToolbarTo = null)
     }
 
     /**
@@ -370,9 +449,7 @@ class AnnotateActivity : AppCompatActivity() {
      * drop the crop selection.
      */
     private fun commitPendingCrop() {
-        if (cropOverlay.visibility != View.VISIBLE) return
-        canvas.applyCrop(cropOverlay.rect)
-        exitCropMode()
+        commitCropIfActive()
     }
 
     private fun loadImage(uri: Uri) {
@@ -386,6 +463,13 @@ class AnnotateActivity : AppCompatActivity() {
                     finish()
                 } else {
                     canvas.setSourceBitmap(bm)
+                    // Restoring CROP from prefs cannot show the overlay in
+                    // onCreate - the source rect is unknown until the bitmap
+                    // is in. Now that it is, enter crop mode so the restored
+                    // tool state is consistent (canvas.tool is already CROP,
+                    // so without this the canvas would be inert with no
+                    // visible crop UI).
+                    if (canvas.tool == InkTool.CROP) enterCropMode()
                 }
             }
         }.start()

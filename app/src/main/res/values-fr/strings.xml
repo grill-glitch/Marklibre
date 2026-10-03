@@ -53,7 +53,6 @@
     <string name="delete_screenshot">Supprimer la capture d\'écran ?</string>
     <string name="text_hint">Ajouter du texte</string>
     <string name="text_done">Terminé</string>
-    <string name="crop_confirm">Recadrer</string>
     <string name="crop_cancel">Annuler</string>
     <string name="discard_changes">Abandonner les modifications ?</string>
     <string name="discard_changes_message">Vos annotations seront perdues.</string>

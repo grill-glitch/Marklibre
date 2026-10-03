@@ -53,7 +53,6 @@
     <string name="delete_screenshot">Удалить скриншот?</string>
     <string name="text_hint">Добавить текст</string>
     <string name="text_done">Готово</string>
-    <string name="crop_confirm">Обрезать</string>
     <string name="crop_cancel">Отмена</string>
     <string name="discard_changes">Отменить изменения?</string>
     <string name="discard_changes_message">Ваши аннотации будут потеряны.</string>

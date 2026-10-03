@@ -40,11 +40,32 @@ class ToolbarFragment : Fragment() {
         fun onToolSelected(tool: InkTool)
         /** Momentary action (not a tool): rotate the whole image 90° CW. */
         fun onRotate()
-        fun onColorSelected(color: Int)
+        /**
+         * A color was picked. [source] tells whether it came from one of the
+         * seven preset swatches (PRESET with the 0..6 index in the swatch
+         * row, left-to-right) or from the palette popup (PALETTE). The
+         * source is needed because a custom palette color can collide
+         * with a preset's hex value, and we want the right button to
+         * stay selected on the next launch.
+         */
+        fun onColorSelected(color: Int, source: ColorSource)
         /** A pen width option (in dp) was picked. */
         fun onWidthSelected(widthDp: Float)
         /** The eyedropper button was tapped: enter canvas pick mode. */
         fun onPickColorRequested()
+    }
+
+    /**
+     * Where the current ink color came from. Used both at selection time
+     * (to route the highlight between preset row and palette button) and
+     * at restore time (to bring the highlight back without an ARGB-only
+     * match, which would mis-attribute a palette color that collides with
+     * a preset). [Preset.index] is 0..6 (left-to-right in the swatch
+     * row).
+     */
+    sealed class ColorSource {
+        data class Preset(val index: Int) : ColorSource()
+        object Palette : ColorSource()
     }
 
     var callbacks: Callbacks? = null
@@ -147,6 +168,10 @@ class ToolbarFragment : Fragment() {
     /** Current ink color, mirrored into the width preview bar. */
     private var currentInkColor: Int = Color.BLACK
 
+    /** Where the current ink color came from last - persisted so the
+     *  highlight on the right button survives a relaunch. */
+    private var currentColorSource: ColorSource = ColorSource.Preset(0)
+
     private var highlightView: View? = null
     private var dimBg: Drawable? = null
     private var defaultBg: Drawable? = null
@@ -196,8 +221,10 @@ class ToolbarFragment : Fragment() {
         penButton.setOnClickListener { callbacks?.onToolSelected(InkTool.PEN) }
         highlighterButton.setOnClickListener { callbacks?.onToolSelected(InkTool.HIGHLIGHTER) }
 
-        for (cb in colorButtons) {
-            cb.setOnClickListener { callbacks?.onColorSelected(cb.color) }
+        for ((index, cb) in colorButtons.withIndex()) {
+            cb.setOnClickListener {
+                callbacks?.onColorSelected(cb.color, ColorSource.Preset(index))
+            }
         }
 
         // width slider: 2..16 dp for the pen, 8..32 dp for the highlighter;
@@ -213,6 +240,7 @@ class ToolbarFragment : Fragment() {
                     if (currentTool == InkTool.HIGHLIGHTER) currentHighlighterWidth = w
                     else currentPenWidth = w
                     callbacks?.onWidthSelected(w)
+                    persistToolState()
                 }
             }
 
@@ -224,9 +252,13 @@ class ToolbarFragment : Fragment() {
         paletteRememberedColor = palettePrefs.getInt("palette_color", -1)
         paletteHasMemory = paletteRememberedColor != -1
 
-        // anchor the bright highlight on the pen once positions are known
+        // anchor the bright highlight on the active tool once positions are
+        // known. This runs after onCreate (where the tool state is restored
+        // from prefs), so it must use currentTool rather than a hard-coded
+        // penButton - otherwise it would yank the highlight back to PEN and
+        // every restored tool would look like the pen.
         view.post {
-            positionHighlight(penButton, animate = false)
+            positionHighlight(buttonFor(currentTool), animate = false)
             highlightView?.visibility = View.VISIBLE
         }
     }
@@ -267,6 +299,7 @@ class ToolbarFragment : Fragment() {
         // icon color gradient: the new tool's icon fades from its neutral
         // tone to its active tint (onPrimary, or the ink color for brushes)
         animateIconTint(newButton, tool)
+        persistToolState()
     }
 
     private fun animateIconTint(btn: View, tool: InkTool) {
@@ -313,6 +346,16 @@ class ToolbarFragment : Fragment() {
 
     private fun positionHighlight(btn: View, animate: Boolean) {
         val hv = highlightView ?: return
+        // Before the first layout (cold-start restore runs during onCreate)
+        // btn.left / btn.width / hv.width are all 0, so the computed target
+        // would be 0 and the highlight would stay parked on its XML default
+        // (the pen slot). Wait for layout, then place it.
+        if (btn.width == 0 || hv.width == 0) {
+            btn.doOnPreDraw {
+                if (btn.width > 0 && hv.width > 0) positionHighlight(btn, animate)
+            }
+            return
+        }
         val target = btn.left + btn.width / 2f - hv.width / 2f
         if (!animate) {
             hv.animate().cancel()
@@ -358,6 +401,26 @@ class ToolbarFragment : Fragment() {
     }
 
     fun setSelectedColor(color: Int) {
+        // Internal helper kept around for restore paths where the source
+        // has already been resolved (e.g. restoreState). It does NOT
+        // persist - the public entry point is [setSelectedColor] with
+        // source, called from the Callbacks interface.
+        applyColor(color)
+    }
+
+    /**
+     * Sets the current ink color from a user action. [source] tells
+     * whether the color came from a preset tap or a palette Apply, and
+     * also gets persisted so the next launch can restore the right
+     * button highlight.
+     */
+    fun setSelectedColor(color: Int, source: ColorSource) {
+        applyColor(color)
+        currentColorSource = source
+        persistToolState()
+    }
+
+    private fun applyColor(color: Int) {
         colorButtons.checkOnly(color)
         // the palette button is "checked" only when the current color is a
         // custom one (not one of the presets)
@@ -621,7 +684,7 @@ class ToolbarFragment : Fragment() {
                         callbacks?.onPickColorRequested()
                     },
                     onApply = { argb ->
-                        callbacks?.onColorSelected(argb)
+                        callbacks?.onColorSelected(argb, ColorSource.Palette)
                         paletteRememberedColor = argb
                         paletteHasMemory = true
                         palettePrefs.edit().putInt("palette_color", argb).apply()
@@ -735,5 +798,103 @@ class ToolbarFragment : Fragment() {
         // swatch / hex / sliders all land on the sampled value rather
         // than the pre-eyedropper state.
         startPaletteSession(paletteLastPickedColor)
+    }
+
+    // -----------------------------------------------------------------
+    // Tool-state persistence
+    //
+    // The user's last tool, ink color (with its source so the right button
+    // stays highlighted), and per-tool stroke widths are written to the
+    // shared "marklibre" prefs on every change and re-read on launch.
+    // -----------------------------------------------------------------
+
+    /**
+     * Snapshot of the tool state, used to drive [restoreState] from prefs
+     * on cold start.
+     */
+    data class ToolState(
+        val tool: InkTool,
+        val colorArgb: Int,
+        val colorSource: ColorSource,
+        val penWidth: Float,
+        val highlighterWidth: Float,
+    )
+
+    /** Reads tool state from prefs. Returns null if nothing was stored. */
+    private fun readToolState(): ToolState? {
+        val prefs = requireContext().getSharedPreferences("marklibre", Context.MODE_PRIVATE)
+        if (!prefs.contains(KEY_LAST_TOOL)) return null
+        val toolName = prefs.getString(KEY_LAST_TOOL, null) ?: return null
+        val tool = runCatching { InkTool.valueOf(toolName) }.getOrNull() ?: return null
+        // CROP is a regular tool now (not a transient mode). If the user
+        // left the app while CROP was selected, the next launch should
+        // resume in crop mode too.
+        val colorArgb = prefs.getInt(KEY_LAST_COLOR_ARGB, Color.BLACK)
+        val colorSource = readColorSource(prefs.getString(KEY_LAST_COLOR_SOURCE, null))
+        val penWidth = prefs.getFloat(KEY_LAST_PEN_WIDTH, 8f)
+            .coerceIn(minPenWidth, maxPenWidth)
+        val highlighterWidth = prefs.getFloat(KEY_LAST_HIGHLIGHTER_WIDTH, 24f)
+            .coerceIn(minHighlighterWidth, maxHighlighterWidth)
+        return ToolState(tool, colorArgb, colorSource, penWidth, highlighterWidth)
+    }
+
+    private fun readColorSource(raw: String?): ColorSource {
+        if (raw == null) return ColorSource.Preset(0)
+        return when {
+            raw.startsWith("preset:") -> {
+                val idx = raw.substringAfter("preset:").toIntOrNull() ?: 0
+                ColorSource.Preset(idx.coerceIn(0, colorButtons.size - 1))
+            }
+            raw == "palette" -> ColorSource.Palette
+            else -> ColorSource.Preset(0)
+        }
+    }
+
+    private fun writeColorSource(source: ColorSource): String = when (source) {
+        is ColorSource.Preset -> "preset:${source.index}"
+        ColorSource.Palette -> "palette"
+    }
+
+    /**
+     * Applies persisted tool state. Call exactly once during startup, before
+     * any other set-setter that would otherwise persist defaults over the
+     * restored values. Returns the snapshot so the caller can mirror the
+     * restored values into other state owners (the canvas ink color / tool).
+     *
+     * Tool is applied first, then color + source (which sets the right
+     * button highlight), then widths (which are tool-specific).
+     */
+    fun restoreStateOrNull(): ToolState? {
+        val state = readToolState() ?: return null
+        setActiveTool(state.tool)
+        currentColorSource = state.colorSource
+        applyColor(state.colorArgb)
+        setSelectedPenWidth(state.penWidth)
+        setSelectedHighlighterWidth(state.highlighterWidth)
+        return state
+    }
+
+    /**
+     * Writes the current tool state to prefs. Called from every state
+     * change so a process kill doesn't lose what the user picked.
+     */
+    fun persistToolState() {
+        if (!::penButton.isInitialized) return
+        val prefs = requireContext().getSharedPreferences("marklibre", Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString(KEY_LAST_TOOL, currentTool.name)
+            .putInt(KEY_LAST_COLOR_ARGB, currentInkColor)
+            .putString(KEY_LAST_COLOR_SOURCE, writeColorSource(currentColorSource))
+            .putFloat(KEY_LAST_PEN_WIDTH, currentPenWidth)
+            .putFloat(KEY_LAST_HIGHLIGHTER_WIDTH, currentHighlighterWidth)
+            .apply()
+    }
+
+    private companion object {
+        const val KEY_LAST_TOOL = "tool_last"
+        const val KEY_LAST_COLOR_ARGB = "tool_last_color_argb"
+        const val KEY_LAST_COLOR_SOURCE = "tool_last_color_source"
+        const val KEY_LAST_PEN_WIDTH = "tool_last_pen_width"
+        const val KEY_LAST_HIGHLIGHTER_WIDTH = "tool_last_highlighter_width"
     }
 }

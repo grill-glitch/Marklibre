@@ -34,26 +34,25 @@
                 android:id="@+id/crop_actions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="bottom"
+                android:layout_gravity="bottom|center_horizontal"
+                android:layout_marginBottom="@dimen/ink_canvas_margin_bottom"
                 android:gravity="center"
                 android:orientation="horizontal"
                 android:padding="8dp"
                 android:visibility="gone">
 
+                <!-- Crop mode no longer has a confirm button: switching to
+                     any other tool, picking a color, rotating, or saving
+                     implicitly commits the visible crop. The remaining
+                     Cancel button sits in the blank strip below the image,
+                     anchored with the same bottom inset as the canvas, so
+                     it clears the (now always visible) bottom toolbar. -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/crop_cancel"
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/crop_cancel" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/crop_confirm"
-                    style="@style/Widget.Material3.Button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:text="@string/crop_confirm" />
             </LinearLayout>
 
             <LinearLayout

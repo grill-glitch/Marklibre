@@ -53,7 +53,6 @@
     <string name="delete_screenshot">スクリーンショットを削除しますか?</string>
     <string name="text_hint">テキストを追加</string>
     <string name="text_done">完了</string>
-    <string name="crop_confirm">トリミング</string>
     <string name="crop_cancel">キャンセル</string>
     <string name="discard_changes">変更を破棄しますか?</string>
     <string name="discard_changes_message">注釈は失われます。</string>

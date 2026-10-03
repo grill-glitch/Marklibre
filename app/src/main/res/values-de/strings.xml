@@ -53,7 +53,6 @@
     <string name="delete_screenshot">Screenshot löschen?</string>
     <string name="text_hint">Text hinzufügen</string>
     <string name="text_done">Fertig</string>
-    <string name="crop_confirm">Zuschneiden</string>
     <string name="crop_cancel">Abbrechen</string>
     <string name="discard_changes">Änderungen verwerfen?</string>
     <string name="discard_changes_message">Deine Anmerkungen gehen verloren.</string>
